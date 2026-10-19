@@ -3,53 +3,49 @@
 ## 技术栈
 
 暂定为 Vue3 + Vite  
-大致还有 Vue Router 和 Pinia
 
-- UI: 使用 ElementPlus
+完整技术栈：Vue 3、TypeScript、Vite、Vue Router、Pinia 和 Element Plus。
 
-## Vue 官方说明
+## 相关指引
 
-### Recommended IDE Setup
+### 首次启动
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+环境要求：Node.js `^22.18.0 || >=24.12.0`，使用 npm 管理依赖。
 
-### Recommended Browser Setup
-
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
-
-### Type Support for `.vue` Imports in TS
-
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
-
-### Customize configuration
-
-See [Vite Configuration Reference](https://vite.dev/config/).
-
-### Project Setup
-
-```sh
-npm install
-```
-
-#### Compile and Hot-Reload for Development
-
-```sh
+```powershell
+git clone <仓库地址>
+cd TeamFlow/frontend
+npm ci
 npm run dev
 ```
 
-#### Type-Check, Compile and Minify for Production
+### 常用命令
 
-```sh
-npm run build
-```
+以下命令均在 `frontend/` 下执行：
 
-#### Lint with [ESLint](https://eslint.org/)
+| 命令 | 用途 |
+|---|---|
+| `npm ci` | 按锁文件安装依赖，首次克隆或依赖变更后使用 |
+| `npm run dev` | 启动开发服务 |
+| `npm run type-check` | 检查 TypeScript 类型 |
+| `npm run lint:check` | 检查代码规范，不自动修改 |
+| `npm run format:check` | 检查格式，不自动修改 |
+| `npm run lint` | 自动修复可修复的代码规范问题 |
+| `npm run format` | 自动格式化 `src/` |
+| `npm run build` | 类型检查并构建 |
+| `npm run preview` | 本地预览构建产物，需先运行构建 |
 
-```sh
-npm run lint
-```
+添加依赖使用 `npm install <包名>`，开发工具使用 `npm install -D <包名>`，同时提交 `package.json` 和 `package-lock.json`。
+
+### 代码放置约定
+
+| 目录 | 内容 |
+|---|---|
+| `src/views/` | 按业务模块组织的页面 |
+| `src/components/` | 多个页面共用的组件 |
+| `src/layouts/` | 导航、侧边栏等公共布局 |
+| `src/router/` | 路由配置 |
+| `src/stores/` | Pinia 共享状态 |
+| `src/api/` | Axios 实例与业务接口 |
+| `src/types/` | 公共 TypeScript 类型 |
+| `src/utils/` | 通用工具函数 |
