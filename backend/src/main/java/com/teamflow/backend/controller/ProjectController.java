@@ -6,6 +6,8 @@ import com.teamflow.backend.service.ProjectService;
 import com.teamflow.backend.vo.ProjectDetailVO;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -21,6 +23,7 @@ import java.util.List;
 @Validated
 @RestController
 @RequestMapping("/api/projects")
+@Tag(name = "项目管理")
 public class ProjectController {
 
     private final ProjectService projectService;
@@ -30,11 +33,13 @@ public class ProjectController {
     }
 
     @GetMapping
+    @Operation(summary = "查询项目列表")
     public Result<List<ProjectDetailVO>> listProjects() {
         return Result.success(projectService.listProjects());
     }
 
     @GetMapping("/{id}")
+    @Operation(summary = "查询项目详情")
     public Result<ProjectDetailVO> getProject(
             @PathVariable @Positive(message = "must be greater than 0") Long id
     ) {
@@ -42,6 +47,7 @@ public class ProjectController {
     }
 
     @PostMapping
+    @Operation(summary = "创建项目并将创建者加入项目管理员")
     public ResponseEntity<Result<ProjectDetailVO>> createProject(
             @Valid @RequestBody CreateProjectRequest request
     ) {

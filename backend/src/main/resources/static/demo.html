@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TeamFlow · 任务演示</title>
+    <style>
+      * { box-sizing: border-box; }
+      body { margin: 0; color: #303133; background: #f5f7fa; font: 14px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif; }
+      header { padding: 18px max(24px, calc((100vw - 1180px) / 2)); background: #fff; border-bottom: 1px solid #dcdfe6; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+      h1 { margin: 0; font-size: 20px; font-weight: 600; }
+      h2 { margin: 0 0 16px; font-size: 17px; font-weight: 600; }
+      a { color: #409eff; text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      main { max-width: 1228px; margin: 24px auto; padding: 0 24px; }
+      .note { margin: 0 0 18px; color: #606266; }
+      .panel { padding: 22px; margin-bottom: 20px; background: #fff; border: 1px solid #e4e7ed; border-radius: 4px; }
+      .toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+      .toolbar label { display: flex; align-items: center; gap: 10px; }
+      .toolbar select { width: 260px; max-width: 100%; }
+      button, input, select, textarea { font: inherit; }
+      input, select, textarea { width: 100%; padding: 7px 11px; border: 1px solid #dcdfe6; border-radius: 4px; background: #fff; color: #303133; outline: none; }
+      input:focus, select:focus, textarea:focus { border-color: #409eff; }
+      button { padding: 7px 15px; border: 1px solid #dcdfe6; border-radius: 4px; background: #fff; color: #606266; cursor: pointer; white-space: nowrap; }
+      button:hover { color: #409eff; border-color: #a0cfff; background: #ecf5ff; }
+      button.primary { color: #fff; background: #409eff; border-color: #409eff; }
+      button.primary:hover { background: #66b1ff; border-color: #66b1ff; }
+      button:disabled, select:disabled { cursor: not-allowed; opacity: .55; }
+      .muted { color: #909399; }
+      .table-wrap { overflow-x: auto; }
+      table { width: 100%; border-collapse: collapse; text-align: left; min-width: 860px; }
+      th, td { padding: 12px 10px; border-bottom: 1px solid #ebeef5; vertical-align: top; }
+      th { background: #f5f7fa; color: #606266; font-weight: 500; }
+      td:first-child { width: 58px; }
+      .task-title { font-weight: 500; overflow-wrap: anywhere; }
+      .description { margin-top: 3px; font-size: 12px; color: #909399; max-width: 300px; white-space: pre-wrap; overflow-wrap: anywhere; }
+      .status-cell { min-width: 210px; }
+      .status-editor { display: flex; align-items: center; gap: 8px; }
+      .status-editor select { width: 112px; }
+      .date-cell { min-width: 145px; font-size: 12px; white-space: nowrap; }
+      .empty { text-align: center; padding: 30px 10px; color: #909399; }
+      .message { padding: 10px 14px; margin-bottom: 18px; border-radius: 4px; overflow-wrap: anywhere; }
+      .message.error { background: #fef0f0; color: #f56c6c; border: 1px solid #fde2e2; }
+      .message.success { background: #f0f9eb; color: #529b2e; border: 1px solid #e1f3d8; }
+      .fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+      .field { display: flex; flex-direction: column; gap: 6px; }
+      .wide { grid-column: 1 / -1; }
+      textarea { resize: vertical; min-height: 72px; }
+      .actions { margin-top: 18px; display: flex; align-items: center; gap: 14px; }
+      .required { color: #f56c6c; }
+      [hidden] { display: none !important; }
+      @media (max-width: 680px) { header { padding: 16px; } main { padding: 0 16px; margin: 16px auto; } .panel { padding: 16px; } .fields { grid-template-columns: 1fr; } .toolbar label { width: 100%; } .toolbar select { flex: 1; width: 0; } }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>TeamFlow <span class="muted">/ 任务演示</span></h1>
+      <a href="/doc.html" target="_blank" rel="noopener">接口文档 ↗</a>
+    </header>
+    <main>
+      <p class="note">基础演示：查看项目任务、创建任务、修改任务状态。当前使用用户 ID 模拟操作身份，尚未接入登录。</p>
+      <div id="message" class="message" role="status" aria-live="polite" hidden></div>
+      <section class="panel" aria-labelledby="tasks-heading">
+        <h2 id="tasks-heading">项目任务</h2>
+        <div class="toolbar">
+          <label for="project">选择项目 <select id="project" disabled><option>正在加载项目…</option></select></label>
+          <button id="refresh" type="button" disabled>刷新任务</button>
+          <span id="task-count" class="muted" aria-live="polite"></span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>任务</th><th>创建人 / 负责人</th><th>优先级</th><th>状态</th><th>截止 / 完成时间</th></tr></thead>
+            <tbody id="tasks"><tr><td colspan="6" class="empty">正在加载…</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+      <section class="panel" aria-labelledby="create-heading">
+        <h2 id="create-heading">创建任务</h2>
+        <p class="note">初始演示用户：1 Alice、2 Bob、3 Carol。创建人和负责人必须是所选项目的成员；负责人可以留空。</p>
+        <form id="create-form">
+          <fieldset id="create-fields" disabled style="border: 0; padding: 0; margin: 0; min-width: 0;">
+            <div class="fields">
+              <label class="field wide"><span>任务标题 <span class="required">*</span></span><input id="title" name="title" required maxlength="200" placeholder="例如：完成任务接口联调" /></label>
+              <label class="field"><span>创建人用户 ID <span class="required">*</span></span><input id="creator" name="creatorId" type="number" min="1" step="1" value="1" required /></label>
+              <label class="field">负责人用户 ID<input id="assignee" name="assigneeId" type="number" min="1" step="1" value="2" placeholder="可留空" /></label>
+              <label class="field">优先级<select id="priority" name="priority"><option value="LOW">低</option><option value="MEDIUM" selected>中</option><option value="HIGH">高</option></select></label>
+              <label class="field">截止时间<input id="due-at" name="dueAt" type="datetime-local" /></label>
+              <label class="field wide">任务描述<textarea id="description" name="description" placeholder="可留空"></textarea></label>
+            </div>
+            <div class="actions"><button id="create" class="primary" type="submit">创建任务</button><span class="muted">新任务默认状态：待办</span></div>
+          </fieldset>
+        </form>
+      </section>
+      <p class="muted">使用 demo 配置启动时，数据保存在 H2 内存数据库中，重启后恢复初始数据。</p>
+    </main>
+    <script>
+      const byId = (id) => document.getElementById(id);
+      const projectSelect = byId('project');
+      const refreshButton = byId('refresh');
+      const createFields = byId('create-fields');
+      const createButton = byId('create');
+      const taskBody = byId('tasks');
+      const statusNames = { TODO: '待办', IN_PROGRESS: '进行中', DONE: '已完成' };
+      const priorityNames = { LOW: '低', MEDIUM: '中', HIGH: '高' };
+      let listRequest = 0;
+      let creating = false;
+
+      function showMessage(text, kind = 'error') {
+        const message = byId('message');
+        message.textContent = text;
+        message.className = `message ${kind}`;
+        message.hidden = !text;
+      }
+
+      async function api(path, options = {}) {
+        let response;
+        try {
+          response = await fetch(path, { ...options, headers: { 'Content-Type': 'application/json', ...options.headers } });
+        } catch {
+          throw new Error('无法连接后端，请确认服务仍在运行后重试。');
+        }
+        const result = await response.json().catch(() => null);
+        if (!response.ok || result?.code !== 0) {
+          throw new Error(result?.message || `请求失败（HTTP ${response.status}）`);
+        }
+        return result.data;
+      }
+
+      function emptyRow(text) {
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.colSpan = 6;
+        cell.className = 'empty';
+        cell.textContent = text;
+        row.append(cell);
+        taskBody.replaceChildren(row);
+      }
+
+      function cell(row, text, className = '') {
+        const td = document.createElement('td');
+        td.textContent = text;
+        td.className = className;
+        row.append(td);
+        return td;
+      }
+
+      function person(id, name) {
+        return id == null ? '未分配' : `${name || '用户'} (#${id})`;
+      }
+
+      function formatDate(value) {
+        return value ? value.replace('T', ' ').slice(0, 19) : '—';
+      }
+
+      function renderTasks(tasks) {
+        byId('task-count').textContent = `共 ${tasks.length} 条任务`;
+        if (!tasks.length) {
+          emptyRow('该项目暂无任务，可以在下方创建。');
+          return;
+        }
+        taskBody.replaceChildren();
+        for (const task of tasks) {
+          const row = document.createElement('tr');
+          cell(row, task.id);
+          const titleCell = cell(row, '');
+          const title = document.createElement('div');
+          title.className = 'task-title';
+          title.textContent = task.title;
+          titleCell.append(title);
+          if (task.description) {
+            const description = document.createElement('div');
+            description.className = 'description';
+            description.textContent = task.description;
+            titleCell.append(description);
+          }
+          const peopleCell = cell(row, '');
+          const creator = document.createElement('div');
+          creator.textContent = `创建：${person(task.creatorId, task.creatorDisplayName)}`;
+          const assignee = document.createElement('div');
+          assignee.textContent = `负责：${person(task.assigneeId, task.assigneeDisplayName)}`;
+          peopleCell.append(creator, assignee);
+          cell(row, priorityNames[task.priority] || task.priority);
+          const statusCell = cell(row, '', 'status-cell');
+          const editor = document.createElement('div');
+          editor.className = 'status-editor';
+          const select = document.createElement('select');
+          select.setAttribute('aria-label', `任务 ${task.id} 的状态`);
+          for (const [value, label] of Object.entries(statusNames)) {
+            const option = document.createElement('option');
+            option.value = value;
+            option.textContent = label;
+            select.append(option);
+          }
+          select.value = task.status;
+          const save = document.createElement('button');
+          save.type = 'button';
+          save.textContent = '保存';
+          save.disabled = true;
+          select.addEventListener('change', () => { save.disabled = select.value === task.status; });
+          const dates = cell(row, '', 'date-cell');
+          const due = document.createElement('div');
+          due.textContent = `截止：${formatDate(task.dueAt)}`;
+          const completed = document.createElement('div');
+          completed.textContent = `完成：${formatDate(task.completedAt)}`;
+          dates.append(due, completed);
+          save.addEventListener('click', async () => {
+            save.disabled = true;
+            select.disabled = true;
+            save.textContent = '保存中';
+            showMessage('');
+            try {
+              const updated = await api(`/api/tasks/${task.id}/status`, { method: 'PATCH', body: JSON.stringify({ status: select.value }) });
+              task.status = updated.status;
+              select.value = updated.status;
+              completed.textContent = `完成：${formatDate(updated.completedAt)}`;
+              const refreshed = projectSelect.value === String(task.projectId) ? await loadTasks() : true;
+              if (refreshed) showMessage(`任务 #${task.id} 已更新为${statusNames[updated.status]}。`, 'success');
+              else showMessage(`任务 #${task.id} 状态已保存，但列表刷新失败，请点击刷新任务。`);
+            } catch (error) {
+              showMessage(error.message);
+            } finally {
+              select.disabled = false;
+              save.disabled = select.value === task.status;
+              save.textContent = '保存';
+            }
+          });
+          editor.append(select, save);
+          statusCell.append(editor);
+          taskBody.append(row);
+        }
+      }
+
+      async function loadTasks() {
+        const request = ++listRequest;
+        const projectId = projectSelect.value;
+        if (!projectId) return;
+        refreshButton.disabled = true;
+        byId('task-count').textContent = '加载中…';
+        emptyRow('正在加载任务…');
+        try {
+          const tasks = await api(`/api/projects/${projectId}/tasks`);
+          if (request === listRequest) renderTasks(tasks);
+          return true;
+        } catch (error) {
+          if (request === listRequest) {
+            emptyRow('加载失败，请点击刷新重试。');
+            byId('task-count').textContent = '';
+            showMessage(error.message);
+          }
+          return false;
+        } finally {
+          if (request === listRequest) refreshButton.disabled = false;
+        }
+      }
+
+      byId('create-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        if (creating || !projectSelect.value) return;
+        const title = byId('title').value.trim();
+        if (!title) {
+          showMessage('请填写任务标题，不能只有空格。');
+          byId('title').focus();
+          return;
+        }
+        const projectId = projectSelect.value;
+        const dueAt = byId('due-at').value;
+        const payload = {
+          title,
+          description: byId('description').value.trim() || null,
+          creatorId: Number(byId('creator').value),
+          assigneeId: byId('assignee').value ? Number(byId('assignee').value) : null,
+          priority: byId('priority').value,
+          dueAt: dueAt ? (dueAt.length === 16 ? `${dueAt}:00` : dueAt) : null,
+        };
+        creating = true;
+        createFields.disabled = true;
+        projectSelect.disabled = true;
+        createButton.textContent = '创建中…';
+        showMessage('');
+        try {
+          const task = await api(`/api/projects/${projectId}/tasks`, { method: 'POST', body: JSON.stringify(payload) });
+          byId('title').value = '';
+          byId('description').value = '';
+          byId('due-at').value = '';
+          const refreshed = await loadTasks();
+          if (refreshed) showMessage(`任务 #${task.id} 创建成功。`, 'success');
+          else showMessage(`任务 #${task.id} 已创建，但列表刷新失败，请点击刷新任务。`);
+        } catch (error) {
+          showMessage(error.message);
+        } finally {
+          creating = false;
+          createFields.disabled = false;
+          projectSelect.disabled = false;
+          createButton.textContent = '创建任务';
+        }
+      });
+
+      projectSelect.addEventListener('change', () => { showMessage(''); loadTasks(); });
+      refreshButton.addEventListener('click', () => { showMessage(''); loadTasks(); });
+
+      async function init() {
+        try {
+          const projects = await api('/api/projects');
+          projectSelect.replaceChildren();
+          if (!projects.length) {
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = '暂无项目';
+            projectSelect.append(option);
+            emptyRow('暂无项目，请先通过接口文档创建项目。');
+            return;
+          }
+          for (const project of projects) {
+            const option = document.createElement('option');
+            option.value = project.id;
+            option.textContent = `${project.name} (#${project.id})${project.status === 'ARCHIVED' ? ' · 已归档' : ''}`;
+            projectSelect.append(option);
+          }
+          const activeProject = projects.find((project) => project.status === 'ACTIVE');
+          if (activeProject) projectSelect.value = String(activeProject.id);
+          projectSelect.disabled = false;
+          createFields.disabled = false;
+          await loadTasks();
+        } catch (error) {
+          emptyRow('项目加载失败，请确认后端已启动，然后刷新页面。');
+          showMessage(error.message);
+        }
+      }
+
+      init();
+    </script>
+  </body>
+</html>
