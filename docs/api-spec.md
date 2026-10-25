@@ -9,9 +9,9 @@
 | 项目 | `GET /api/projects` | 已实现 |
 | 项目 | `GET /api/projects/{id}` | 已实现 |
 | 项目 | `POST /api/projects` | 已实现 |
-| 任务 | `GET /api/projects/{projectId}/tasks` | 待实现 |
-| 任务 | `POST /api/projects/{projectId}/tasks` | 待实现 |
-| 任务 | `PATCH /api/tasks/{taskId}/status` | 待实现 |
+| 任务 | `GET /api/projects/{projectId}/tasks` | 已实现 |
+| 任务 | `POST /api/projects/{projectId}/tasks` | 已实现 |
+| 任务 | `PATCH /api/tasks/{taskId}/status` | 已实现 |
 
 ## 2. 基础约定
 
@@ -21,6 +21,8 @@
 后端地址：http://localhost:8080
 接口前缀：/api
 Content-Type：application/json
+Knife4j 文档：http://localhost:8080/doc.html
+OpenAPI JSON：http://localhost:8080/v3/api-docs
 ```
 
 前端统一通过 Axios 访问 `/api`，由 Vite 将请求代理到后端。页面和业务接口代码中不得写死完整后端地址。
@@ -268,7 +270,7 @@ Content-Type: application/json
 
 ## 5. 任务数据结构
 
-本节是前后端已确认、后端待实现的任务接口契约。
+本节是当前已实现的任务接口契约。
 
 任务响应对象：
 
@@ -277,7 +279,9 @@ Content-Type: application/json
 | `id` | number | 否 | 任务 ID |
 | `projectId` | number | 否 | 当前接口只处理项目任务 |
 | `creatorId` | number | 否 | 创建者 ID |
+| `creatorDisplayName` | string | 否 | 创建者显示名称 |
 | `assigneeId` | number | 是 | 负责人 ID，`null` 表示未分配 |
+| `assigneeDisplayName` | string | 是 | 负责人显示名称，未分配时为 `null` |
 | `title` | string | 否 | 任务标题 |
 | `description` | string | 是 | 任务描述 |
 | `status` | string | 否 | `TODO`、`IN_PROGRESS` 或 `DONE` |
@@ -316,7 +320,9 @@ GET /api/projects/{projectId}/tasks
       "id": 1,
       "projectId": 1,
       "creatorId": 1,
+      "creatorDisplayName": "Alice",
       "assigneeId": 2,
+      "assigneeDisplayName": "Bob",
       "title": "完成登录页面",
       "description": "完成页面布局和表单校验",
       "status": "TODO",
@@ -409,5 +415,5 @@ Content-Type: application/json
 
 - 接入登录后，`ownerId` 和 `creatorId` 不再由前端传递。
 - 当前列表接口均不分页；引入分页时需要前后端共同更新响应结构。
-- Knife4j 接入后，在线文档必须与本文档保持一致。
+- Knife4j 在线文档必须与本文档保持一致。
 - 新增、删除或重命名字段时，必须同时修改数据库、后端 DTO/VO、前端 TypeScript 类型和本文档。
