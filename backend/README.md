@@ -97,6 +97,8 @@ Java 基础包为 `com.teamflow.backend`，业务代码按以下目录组织：
 
 所有业务接口统一使用 `/api` 前缀。
 
+完整的前后端接口契约见 [API 规范](../docs/api-spec.md)。
+
 统一响应结构：
 
 ```json
