@@ -16,7 +16,33 @@ const router = createRouter({
         {
           path: 'projects',
           component: () => import('@/views/project/ProjectListView.vue'),
-          meta: { title: '项目' },
+          meta: { title: '项目', projectData: true },
+        },
+        {
+          path: 'projects/:projectId',
+          component: () => import('@/views/project/ProjectDetailView.vue'),
+          meta: { title: '项目详情', projectData: true },
+          children: [
+            { path: '', redirect: (to) => ({ name: 'project-overview', params: to.params }) },
+            {
+              path: 'overview',
+              name: 'project-overview',
+              component: () => import('@/views/project/ProjectOverviewView.vue'),
+              meta: { title: '项目概览' },
+            },
+            {
+              path: 'members',
+              name: 'project-members',
+              component: () => import('@/views/project/ProjectMembersView.vue'),
+              meta: { title: '项目成员' },
+            },
+            {
+              path: 'tasks',
+              name: 'project-tasks',
+              component: () => import('@/views/project/ProjectTasksEntryView.vue'),
+              meta: { title: '项目任务' },
+            },
+          ],
         },
         {
           path: 'tasks',

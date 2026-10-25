@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { useNotificationsStore } from '@/stores/notifications'
+import { useRoute } from 'vue-router'
+const route = useRoute()
 defineProps<{ collapsed: boolean }>()
 const notifications = useNotificationsStore()
 const links = [
@@ -23,6 +25,9 @@ const links = [
         :to="link.to"
         :title="link.label"
         class="nav-item"
+        :class="{
+          'router-link-active': link.to === '/projects' && route.path.startsWith('/projects/'),
+        }"
       >
         <span class="nav-icon" aria-hidden="true">{{ link.icon }}</span
         ><span class="nav-text">{{ link.label }}</span>

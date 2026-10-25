@@ -23,7 +23,9 @@ const notifications = useNotificationsStore()
       >
     </div>
     <div class="header-end">
-      <el-tag type="info" effect="plain" size="small">模拟数据</el-tag
+      <el-tag type="info" effect="plain" size="small">{{
+        route.meta.projectData ? '项目数据已接入' : '模拟数据'
+      }}</el-tag
       ><RouterLink
         to="/notifications"
         class="message-link"
