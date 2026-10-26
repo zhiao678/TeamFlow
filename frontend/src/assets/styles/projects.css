@@ -1,0 +1,82 @@
+.project-card-link {
+  display: block;
+  color: #20304b;
+  transition:
+    box-shadow 0.15s,
+    border-color 0.15s;
+  overflow-wrap: anywhere;
+}
+.project-card-link:hover {
+  border-color: #90b0ff;
+  box-shadow: 0 5px 18px #20304b12;
+}
+.project-enter {
+  display: block;
+  margin-top: 16px;
+  font-size: 13px;
+  color: #386cf4;
+}
+.project-count {
+  margin-bottom: 16px;
+}
+.project-back {
+  display: inline-block;
+  margin-bottom: 24px;
+}
+.project-section {
+  padding: 28px;
+}
+.project-section > p {
+  margin: 16px 0;
+}
+.project-tabs {
+  display: flex;
+  gap: 28px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid #dce3ef;
+}
+.project-tabs a {
+  padding: 12px 4px;
+  color: #65718a;
+  border-bottom: 3px solid transparent;
+}
+.project-tabs a.router-link-active {
+  color: #386cf4;
+  border-color: #386cf4;
+  font-weight: 600;
+}
+.project-description {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.project-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  margin: 28px 0 0;
+}
+.project-facts dt {
+  color: #78849a;
+  font-size: 13px;
+}
+.project-facts dd {
+  margin: 6px 0 0;
+  overflow-wrap: anywhere;
+}
+.project-owner {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 20px 0;
+}
+.page-heading h1 {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 760px) {
+  .project-section {
+    padding: 20px;
+  }
+  .project-facts {
+    grid-template-columns: 1fr;
+  }
+}
