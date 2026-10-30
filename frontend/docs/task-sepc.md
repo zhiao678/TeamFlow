@@ -3,9 +3,17 @@
 ## 当前状态
 
 - `src/views/task/MyTasksView.vue` 是“我的任务”模拟列表，支持前端状态筛选，尚未调用后端。
+- `src/views/task/ProjectTasksView.vue` 已接入真实接口，挂载在 `/projects/:projectId/tasks`，包含：
+  - 项目任务列表（列表 / 看板双视图，可切换），接 `GET /projects/{projectId}/tasks`。
+  - 任务详情弹窗（使用列表返回的完整任务对象，暂无单独详情接口）。
+  - 创建任务表单（校验、提交中状态、失败反馈、防重复提交），接 `POST /projects/{projectId}/tasks`。
+  - 修改任务状态交互（列表行内下拉 + 看板卡片“移动到”菜单），接 `PATCH /tasks/{taskId}/status`，成功后用后端返回更新界面，失败保留原状态并提示。
+  - 状态筛选、加载 / 空数据 / 失败重试 / 项目不存在等状态处理。
+- 接口封装位于 `src/api/tasks.ts`，复用公共 Axios 实例；`TaskPriority` 类型补充在 `src/types/task.ts`。
 - `/tasks` 表示当前用户跨项目的任务集合，与项目详情中的任务列表不同。
-- 任务类型位于 `src/types/task.ts`；模拟任务和状态文案位于 `src/mocks/data.ts`。
-- 当前骨架可参考、复用或替换，不代表项目任务模块已完成。
+- 临时约定：创建任务暂无登录态，`creatorId` 默认取项目创建者 ID；负责人下拉选项由项目创建者与已有任务的负责人、创建者汇总，待成员接口就绪后替换。
+- `src/views/project/ProjectTasksEntryView.vue` 占位页已不再被路由引用，与项目模块协调后可删除。
+- 工作台仍依赖模拟任务，未修改公共模拟数据与公共 Axios 行为。
 
 ## 待完成内容
 

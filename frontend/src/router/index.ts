@@ -39,7 +39,7 @@ const router = createRouter({
             {
               path: 'tasks',
               name: 'project-tasks',
-              component: () => import('@/views/project/ProjectTasksEntryView.vue'),
+              component: () => import('@/views/task/ProjectTasksView.vue'),
               meta: { title: '项目任务' },
             },
           ],
