@@ -1,6 +1,8 @@
 -- Recruitment platform development database.
 -- This script uses a separate database and does not modify the legacy TeamFlow schema.
 
+SET NAMES utf8mb4;
+
 CREATE DATABASE IF NOT EXISTS `teamflow_recruitment`
     CHARACTER SET utf8mb4
     COLLATE utf8mb4_0900_ai_ci;
