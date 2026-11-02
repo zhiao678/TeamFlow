@@ -135,26 +135,6 @@ CREATE TABLE `application` (
         ON UPDATE RESTRICT ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE `application` (
-    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-    `recruitment_id` BIGINT UNSIGNED NOT NULL,
-    `applicant_id` BIGINT UNSIGNED NOT NULL,
-    `introduction` VARCHAR(1000) NULL,
-    `skills_description` VARCHAR(1000) NULL,
-    `available_time` VARCHAR(255) NULL,
-    `status` VARCHAR(20) NOT NULL DEFAULT 'PENDING',
-    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `processed_at` DATETIME NULL,
-    PRIMARY KEY (`id`),
-    KEY `idx_application_recruitment_status` (`recruitment_id`, `status`),
-    KEY `idx_application_recruitment_applicant` (`recruitment_id`, `applicant_id`),
-    CONSTRAINT `chk_application_status` CHECK (`status` IN ('PENDING', 'ACCEPTED', 'REJECTED', 'WITHDRAWN', 'EXPIRED')),
-    CONSTRAINT `fk_application_recruitment` FOREIGN KEY (`recruitment_id`) REFERENCES `recruitment` (`id`)
-        ON UPDATE RESTRICT ON DELETE CASCADE,
-    CONSTRAINT `fk_application_applicant` FOREIGN KEY (`applicant_id`) REFERENCES `user` (`id`)
-        ON UPDATE RESTRICT ON DELETE RESTRICT
-) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
 CREATE TABLE `team_member` (
     `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     `recruitment_id` BIGINT UNSIGNED NOT NULL,
