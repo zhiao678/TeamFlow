@@ -75,7 +75,9 @@ const backend = http.createServer(async (req, res) => {
   }
   if (req.method === 'PATCH' && onProfileRequest) {
     onProfileRequest()
-    await new Promise((resolve) => { releaseProfile = resolve })
+    await new Promise((resolve) => {
+      releaseProfile = resolve
+    })
   }
   res.end(
     JSON.stringify({
@@ -100,7 +102,9 @@ try {
   })
   await assert.rejects(api.login({ username: 'contract', password: 'wrong' }))
   assert.equal(expiryEvents, 0, '错误密码不能触发全局过期跳转')
-  auth.accept(await api.register({ username: 'contract', password: 'correct', displayName: '测试用户' }))
+  auth.accept(
+    await api.register({ username: 'contract', password: 'correct', displayName: '测试用户' }),
+  )
   assert.equal(auth.token, 'contract-token', '注册成功后建立登录状态')
   auth.accept(await api.login({ username: 'contract', password: 'correct' }))
   assert.equal(authorization, undefined, '登录请求不携带旧 Token')
@@ -110,7 +114,9 @@ try {
   assert.equal(auth.user.id, 7, '刷新后从当前用户接口恢复身份')
   assert.equal(authorization, 'Bearer contract-token')
   assert.equal((await api.updateProfile({ displayName: '新昵称' })).displayName, '新昵称')
-  const arrived = new Promise((resolve) => { onProfileRequest = resolve })
+  const arrived = new Promise((resolve) => {
+    onProfileRequest = resolve
+  })
   const saving = auth.saveProfile({ displayName: '旧账号昵称' })
   await arrived
   auth.clear()
@@ -139,7 +145,9 @@ try {
   await assert.rejects(handler.rejected(expired))
   assert.equal(auth.token, 'new-token')
   auth.clear()
-  console.log('PASS: 注册登录、Token 持久化、身份恢复、资料修改、网络失败、401 清理、跨会话保存隔离')
+  console.log(
+    'PASS: 注册登录、Token 持久化、身份恢复、资料修改、网络失败、401 清理、跨会话保存隔离',
+  )
 } finally {
   await new Promise((resolve) => backend.close(resolve))
 }
