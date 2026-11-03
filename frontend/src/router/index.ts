@@ -1,8 +1,19 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
+    {
+      path: '/login',
+      component: () => import('@/views/auth/AuthView.vue'),
+      meta: { title: '登录' },
+    },
+    {
+      path: '/register',
+      component: () => import('@/views/auth/AuthView.vue'),
+      meta: { title: '注册' },
+    },
     {
       path: '/',
       component: () => import('@/layouts/MainLayout.vue'),
@@ -11,7 +22,7 @@ const router = createRouter({
         {
           path: 'dashboard',
           component: () => import('@/views/dashboard/DashboardView.vue'),
-          meta: { title: '工作台' },
+          meta: { title: '工作台', requiresAuth: true },
         },
         {
           path: 'projects',
@@ -47,7 +58,12 @@ const router = createRouter({
         {
           path: 'tasks',
           component: () => import('@/views/task/MyTasksView.vue'),
-          meta: { title: '我的任务' },
+          meta: { title: '我的任务', requiresAuth: true },
+        },
+        {
+          path: 'profile',
+          component: () => import('@/views/profile/ProfileView.vue'),
+          meta: { title: '个人资料', requiresAuth: true },
         },
         {
           path: 'notifications',
@@ -63,6 +79,14 @@ const router = createRouter({
     },
   ],
   scrollBehavior: () => ({ top: 0 }),
+})
+
+router.beforeEach(async (to) => {
+  const auth = useAuthStore()
+  await auth.restore()
+  if (to.meta.requiresAuth && !auth.user) {
+    return { path: '/login', query: { redirect: to.fullPath } }
+  }
 })
 
 export default router

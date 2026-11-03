@@ -1,14 +1,13 @@
 <script setup lang="ts">
-import { useNotificationsStore } from '@/stores/notifications'
 import { useRoute } from 'vue-router'
 const route = useRoute()
 defineProps<{ collapsed: boolean }>()
-const notifications = useNotificationsStore()
 const links = [
   { to: '/dashboard', label: '工作台', icon: '◫' },
   { to: '/projects', label: '项目', icon: '▣' },
   { to: '/tasks', label: '我的任务', icon: '☑' },
   { to: '/notifications', label: '消息', icon: '♧' },
+  { to: '/profile', label: '个人资料', icon: '◉' },
 ]
 </script>
 
@@ -31,11 +30,6 @@ const links = [
       >
         <span class="nav-icon" aria-hidden="true">{{ link.icon }}</span
         ><span class="nav-text">{{ link.label }}</span>
-        <span
-          v-if="link.to === '/notifications' && notifications.unreadCount"
-          class="nav-count nav-text"
-          >{{ notifications.unreadCount }}</span
-        >
       </RouterLink>
     </nav>
     <div class="sidebar-note nav-text">
