@@ -27,7 +27,10 @@ export const updateProfile = (payload: ProfilePayload) =>
 export function errorMessage(error: unknown) {
   if (axios.isAxiosError(error)) {
     const message = error.response?.data?.message
-    return typeof message === 'string' ? message : '请求失败，请检查网络和后端服务后重试'
+    if (typeof message === 'string' && message) return message
+    if (error.response?.status === 401) return '身份验证失败，请重新登录'
+    if (error.response?.status === 403) return '你没有执行此操作的权限'
+    return '请求失败，请检查网络和后端服务后重试'
   }
   return error instanceof Error ? error.message : '请求失败，请重试'
 }
