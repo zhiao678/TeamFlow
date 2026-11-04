@@ -1,0 +1,87 @@
+.recruit {
+  display: grid;
+  gap: 20px;
+  overflow-wrap: anywhere;
+}
+.recruit-grid,
+.recruit-filters,
+.recruit-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 16px;
+}
+.recruit-filters,
+.recruit-card {
+  padding: 22px;
+}
+.recruit-filters label {
+  display: grid;
+  gap: 5px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.recruit input,
+.recruit select,
+.recruit button {
+  font: inherit;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  padding: 8px 10px;
+  background: white;
+  color: #233651;
+  min-width: 0;
+}
+.recruit button {
+  cursor: pointer;
+}
+.recruit button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.recruit .primary {
+  background: #315ed0;
+  color: white;
+  border-color: #315ed0;
+}
+.recruit-card {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+}
+.recruit-card p,
+.recruit-facts dd {
+  white-space: pre-line;
+}
+.recruit-tags,
+.recruit-actions,
+.recruit-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.recruit-meta {
+  justify-content: space-between;
+  font-size: 13px;
+}
+.recruit-meta strong,
+.recruit-tags span {
+  border-radius: 6px;
+  padding: 3px 8px;
+  background: #eaf2ff;
+  color: #305890;
+}
+.recruit-tags span {
+  font-size: 12px;
+}
+.recruit-facts {
+  padding-block: 16px;
+  border-block: 1px solid #e2e8f0;
+}
+.recruit-facts dt {
+  font-size: 13px;
+  color: #586a81;
+}
+.recruit-facts dd {
+  margin: 4px 0;
+}

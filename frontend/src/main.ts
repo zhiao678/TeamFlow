@@ -5,6 +5,7 @@ import App from './App.vue'
 import router from './router'
 import { useAuthStore } from './stores/auth'
 import './assets/styles/index.css'
+import './assets/styles/recruitment.css'
 import './assets/styles/projects.css'
 
 const app = createApp(App)

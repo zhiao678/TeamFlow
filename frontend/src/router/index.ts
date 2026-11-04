@@ -20,6 +20,18 @@ const router = createRouter({
       redirect: '/dashboard',
       children: [
         {
+          path: 'recruitments',
+          name: 'recruitment-hall',
+          component: () => import('@/views/recruitment/RecruitmentHallView.vue'),
+          meta: { title: '招募大厅' },
+        },
+        {
+          path: 'recruitments/:id',
+          name: 'recruitment-detail',
+          component: () => import('@/views/recruitment/RecruitmentDetailView.vue'),
+          meta: { title: '招募详情' },
+        },
+        {
           path: 'dashboard',
           component: () => import('@/views/dashboard/DashboardView.vue'),
           meta: { title: '工作台', requiresAuth: true },

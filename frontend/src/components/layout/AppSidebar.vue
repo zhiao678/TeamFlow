@@ -3,6 +3,7 @@ import { useRoute } from 'vue-router'
 const route = useRoute()
 defineProps<{ collapsed: boolean }>()
 const links = [
+  { to: '/recruitments', label: '招募大厅', icon: '◎' },
   { to: '/dashboard', label: '工作台', icon: '◫' },
   { to: '/projects', label: '项目', icon: '▣' },
   { to: '/tasks', label: '我的任务', icon: '☑' },
@@ -25,7 +26,9 @@ const links = [
         :title="link.label"
         class="nav-item"
         :class="{
-          'router-link-active': link.to === '/projects' && route.path.startsWith('/projects/'),
+          'router-link-active':
+            ['/projects', '/recruitments'].includes(link.to) &&
+            route.path.startsWith(link.to + '/'),
         }"
       >
         <span class="nav-icon" aria-hidden="true">{{ link.icon }}</span
