@@ -24,6 +24,10 @@ public class User {
 
     private String avatarUrl;
 
+    private String platformRole;
+
+    private String accountStatus;
+
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;

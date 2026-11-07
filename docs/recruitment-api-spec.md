@@ -89,6 +89,7 @@ Content-Type: application/json
 - `password` 必填，服务端使用 BCrypt 哈希保存。
 - 不保存明文密码。
 - 新用户默认平台角色为 `USER`。
+- 新用户默认账号状态为 `ACTIVE`。
 
 成功状态：`201 Created`。
 
@@ -119,13 +120,25 @@ Content-Type: application/json
     "user": {
       "id": 1,
       "username": "alice",
-      "displayName": "Alice"
+      "displayName": "Alice",
+      "platformRole": "USER",
+      "accountStatus": "ACTIVE",
+      "skills": []
     }
   }
 }
 ```
 
-### 3.3 当前用户
+### 3.3 退出登录
+
+```http
+POST /api/auth/logout
+Authorization: Bearer <token>
+```
+
+需要登录。首版采用无状态 JWT：接口返回成功后，前端删除本地 Token 和用户状态。后端暂不维护 Token 黑名单，因此旧 Token 在到期前不会被服务端主动撤销。
+
+### 3.4 当前用户
 
 ```http
 GET /api/users/me
@@ -145,19 +158,56 @@ GET /api/users/me
     "department": "计算机学院",
     "grade": "2025级",
     "bio": "喜欢前端开发",
+    "platformRole": "USER",
+    "accountStatus": "ACTIVE",
     "skills": ["Vue", "TypeScript"]
   }
 }
 ```
 
-### 3.4 修改当前用户资料
+平台角色：
+
+```text
+USER
+ADMIN
+```
+
+账号状态：
+
+```text
+ACTIVE
+RESTRICTED
+DISABLED
+```
+
+### 3.5 修改当前用户资料
 
 ```http
 PATCH /api/users/me
 Content-Type: application/json
 ```
 
-需要登录。`username` 不允许修改，`displayName`、头像、院系、年级、简介和技能可以修改。
+需要登录。`username`、`platformRole` 和 `accountStatus` 不允许通过该接口修改；`displayName`、头像、院系、年级、简介和技能可以修改。
+
+请求示例：
+
+```json
+{
+  "displayName": "Alice",
+  "avatarUrl": null,
+  "department": "计算机学院",
+  "grade": "2025级",
+  "bio": "喜欢前端开发",
+  "tagIds": [1, 2]
+}
+```
+
+规则：
+
+- 所有字段均为可选；未传字段保持不变。
+- `tagIds` 传空数组表示清空技能标签，传 `null` 或不传表示保持不变。
+- `tagIds` 最多 20 个，服务端会去重并校验标签存在且已启用。
+- 返回更新后的完整当前用户资料。
 
 ## 4. 招募数据结构
 
