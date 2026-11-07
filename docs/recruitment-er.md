@@ -22,6 +22,8 @@ erDiagram
         varchar password_hash
         varchar display_name
         varchar avatar_url
+        varchar platform_role
+        varchar account_status
         datetime created_at
         datetime updated_at
     }

@@ -27,10 +27,14 @@ CREATE TABLE `user` (
     `password_hash` VARCHAR(255) NOT NULL,
     `display_name` VARCHAR(50) NOT NULL,
     `avatar_url` VARCHAR(255) NULL,
+    `platform_role` VARCHAR(20) NOT NULL DEFAULT 'USER',
+    `account_status` VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    CONSTRAINT `uk_recruitment_user_username` UNIQUE (`username`)
+    CONSTRAINT `uk_recruitment_user_username` UNIQUE (`username`),
+    CONSTRAINT `chk_user_platform_role` CHECK (`platform_role` IN ('USER', 'ADMIN')),
+    CONSTRAINT `chk_user_account_status` CHECK (`account_status` IN ('ACTIVE', 'RESTRICTED', 'DISABLED'))
 ) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `user_profile` (

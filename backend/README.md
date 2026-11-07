@@ -1,105 +1,115 @@
-# 后端说明
+# TeamFlow 后端说明
 
 ## 技术栈
 
-后端基于 Spring Boot 3 开发。
-
-主要技术栈：Java 17、Spring Boot 3.2.12、Maven、MySQL 8、MyBatis-Plus、Lombok 和 Jakarta Validation。Knife4j 将在任务接口阶段接入。
+- Java 17
+- Spring Boot 3.2.12
+- Maven Wrapper
+- MySQL 8、H2（自动化测试）
+- MyBatis-Plus
+- Spring Security、JWT、BCrypt
+- Knife4j / OpenAPI
 
 ## 环境要求
 
 - JDK 17
 - MySQL 8.0
-- 使用项目自带的 Maven Wrapper，无需单独安装 Maven
+- 无需单独安装 Maven，使用项目自带的 Maven Wrapper
 
-检查 Java 版本：
+检查 Java 与 Maven 使用的运行时：
 
 ```powershell
 java -version
+cd backend
+.\mvnw.cmd -version
 ```
 
-输出应为 Java 17。
+两处都必须显示 Java 17。`pom.xml` 中的 `java.version` 不会自动切换终端的 JDK。
 
-## 首次启动
+## 初始化招募平台数据库
 
-在 MySQL 客户端中执行仓库根目录下的初始化脚本：
+在 MySQL 客户端中执行仓库根目录下的脚本：
 
 ```sql
-SOURCE C:/path/to/TeamFlow/database/init.sql;
+SOURCE C:/path/to/TeamFlow/database/recruitment-init.sql;
 ```
 
-该脚本会创建 `teamflow` 数据库、四张基础表和演示数据。重复执行会删除并重建这四张表，请勿用于需要保留数据的数据库。
+脚本会创建并使用 `teamflow_recruitment` 数据库，包含用户、资料、分类、标签、招募、申请和成员等基础表及演示数据。
 
-进入后端目录，并设置当前终端使用的数据库账号：
+脚本会删除并重建该数据库中的同名开发表，不得用于需要保留真实数据的环境。原项目的 `database/init.sql` 和 `teamflow` 数据库暂时保留，两套脚本互不覆盖。
+
+## 启动新版招募平台后端
+
+在 PowerShell 中进入 `backend` 目录并设置当前终端环境变量：
 
 ```powershell
-cd TeamFlow/backend
+$env:JAVA_HOME = 'C:\Program Files\Eclipse Adoptium\jdk-17.0.18.8-hotspot'
+$env:Path = "$env:JAVA_HOME\bin;$env:Path"
 $env:DB_USERNAME = 'root'
-$env:DB_PASSWORD = '你的MySQL密码'
+$env:DB_PASSWORD = '你的 MySQL 密码'
+$env:JWT_SECRET = '至少32字节的本地开发密钥，请勿提交到仓库'
+$env:SPRING_PROFILES_ACTIVE = 'recruitment'
 ```
 
-运行测试：
-
-```powershell
-.\mvnw.cmd clean test
-```
-
-启动后端：
+如 JDK 17 安装位置不同，请修改 `JAVA_HOME`。启动服务：
 
 ```powershell
 .\mvnw.cmd spring-boot:run
 ```
 
-默认服务地址：`http://localhost:8080`。
+默认地址：
 
-数据库连接地址也可以通过 `DB_URL` 覆盖，默认值为 `jdbc:mysql://localhost:3306/teamflow`。数据库密码不得写入配置文件或提交到仓库。
+- 后端服务：`http://localhost:8080`
+- Knife4j：`http://localhost:8080/doc.html`
 
-## 数据库
+新版数据库连接可通过 `RECRUITMENT_DB_URL` 覆盖，默认值为：
 
-初始化脚本位于 `database/init.sql`，包含以下数据表：
+```text
+jdbc:mysql://localhost:3306/teamflow_recruitment
+```
 
-| 表 | 用途 |
-|---|---|
-| `user` | 用户基础信息 |
-| `project` | 项目信息和创建者 |
-| `project_member` | 项目成员及项目内角色 |
-| `task` | 项目任务及个人任务预留字段 |
+数据库密码和 JWT 密钥不得写入配置文件或提交到仓库。
 
-脚本提供 `alice`、`bob`、`carol` 三个虚构演示用户，以及演示项目、成员关系和任务数据。
+## 运行测试
 
-## 常用命令
+自动化测试使用 H2 内存数据库，不会修改本地 MySQL：
 
-以下命令均在 `backend/` 目录下执行：
+```powershell
+.\mvnw.cmd clean test
+```
+
+常用命令：
 
 | 命令 | 用途 |
 |---|---|
-| `.\mvnw.cmd clean test` | 清理项目并运行测试 |
-| `.\mvnw.cmd spring-boot:run` | 启动后端开发服务 |
+| `.\mvnw.cmd clean test` | 清理并运行全部测试 |
+| `.\mvnw.cmd spring-boot:run` | 启动开发服务 |
 | `.\mvnw.cmd clean package` | 编译、测试并打包 |
 | `.\mvnw.cmd clean package -DskipTests` | 跳过测试并打包 |
 
-## 代码目录约定
+## 用户认证与资料接口
 
-Java 基础包为 `com.teamflow.backend`，业务代码按以下目录组织：
+| 方法 | 路径 | 登录要求 | 用途 |
+|---|---|---|---|
+| `POST` | `/api/auth/register` | 否 | 注册并返回 JWT |
+| `POST` | `/api/auth/login` | 否 | 登录并返回 JWT |
+| `POST` | `/api/auth/logout` | 是 | 结束客户端登录会话 |
+| `GET` | `/api/users/me` | 是 | 查询当前用户资料 |
+| `PATCH` | `/api/users/me` | 是 | 修改资料和技能标签 |
 
-| 目录 | 内容 |
-|---|---|
-| `controller` | HTTP 接口和请求参数接收 |
-| `service` | 业务逻辑接口 |
-| `service/impl` | 业务逻辑实现 |
-| `mapper` | MyBatis-Plus 数据访问接口 |
-| `entity` | 数据库实体类 |
-| `dto` | 接收请求的数据对象 |
-| `vo` | 返回给前端的数据对象 |
-| `common` | 统一返回、异常、枚举和公共配置 |
+需要登录的接口携带：
 
-## 接口约定
+```text
+Authorization: Bearer <token>
+```
 
-所有业务接口统一使用 `/api` 前缀。
+首版使用无状态 JWT。退出成功后由前端删除本地 Token；后端暂不维护 Token 黑名单，因此旧 Token 在到期前不会被服务端主动撤销。
 
-完整的前后端接口契约见 [API 规范](../docs/api-spec.md)。
+用户平台角色：`USER / ADMIN`。账号状态：`ACTIVE / RESTRICTED / DISABLED`。
 
-统一响应结构：
+## 统一响应
+
+成功响应：
 
 ```json
 {
@@ -109,34 +119,37 @@ Java 基础包为 `com.teamflow.backend`，业务代码按以下目录组织：
 }
 ```
 
-当前已实现的项目接口：
-
-| 方法 | 路径 | 用途 |
-|---|---|---|
-| `GET` | `/api/projects` | 查询项目列表 |
-| `GET` | `/api/projects/{id}` | 查询项目详情 |
-| `POST` | `/api/projects` | 创建项目 |
-
-创建项目请求示例：
+认证和权限失败也使用相同 JSON 结构：
 
 ```json
 {
-  "name": "TeamFlow",
-  "description": "团队协作系统",
-  "ownerId": 1
+  "code": 40100,
+  "message": "unauthorized",
+  "data": null
 }
 ```
 
-创建项目时，后端会在同一事务中将创建者写入 `project_member`，角色设置为 `ADMIN`。当前尚未接入登录，因此暂时由请求传递 `ownerId`。
+常用业务码：`40000 / 40100 / 40300 / 40400 / 40900 / 50000`。
 
-## 当前开发边界
+## 代码目录
 
-现在不实现：
+Java 基础包为 `com.teamflow.backend`：
 
-- 登录接口。
-- 密码校验。
-- Token。
-- 系统管理员。
-- 个人任务接口。
-- 用户禁用。
-- 评论和消息。
+| 目录 | 内容 |
+|---|---|
+| `controller` | HTTP 接口 |
+| `service`、`service/impl` | 业务接口与实现 |
+| `mapper` | MyBatis-Plus 数据访问 |
+| `entity` | 数据库实体 |
+| `dto` | 请求对象 |
+| `vo` | 响应对象 |
+| `common` | 认证、统一响应、异常、枚举和配置 |
+
+## 文档与兼容边界
+
+- 新版接口规范：[recruitment-api-spec.md](../docs/recruitment-api-spec.md)
+- 新版业务规则：[recruitment-decisions.md](../docs/recruitment-decisions.md)
+- 新版 ER 设计：[recruitment-er.md](../docs/recruitment-er.md)
+- 旧项目/任务接口规范：[api-spec.md](../docs/api-spec.md)
+
+旧项目、任务代码和 `database/init.sql` 暂时保留，避免破坏已有演示与测试。新版功能使用 `teamflow_recruitment` 数据库和 `recruitment` Spring Profile，后续按阶段逐步替换旧业务。

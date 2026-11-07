@@ -4,8 +4,12 @@ CREATE TABLE `user` (
     password_hash VARCHAR(255) NOT NULL,
     display_name VARCHAR(50) NOT NULL,
     avatar_url VARCHAR(255),
+    platform_role VARCHAR(20) NOT NULL DEFAULT 'USER',
+    account_status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CHECK (platform_role IN ('USER', 'ADMIN')),
+    CHECK (account_status IN ('ACTIVE', 'RESTRICTED', 'DISABLED'))
 );
 
 CREATE TABLE user_profile (
