@@ -21,6 +21,40 @@ export interface Recruitment {
   createdAt: string
   updatedAt: string
 }
+export interface RecruitmentTagOption {
+  id: number
+  name: string
+}
+
+/** 新建与编辑共用的一份表单状态；空字符串表示“未填写”。 */
+export interface RecruitmentFormState {
+  categoryId: number | null
+  title: string
+  courseName: string
+  teacherName: string
+  purpose: string
+  description: string
+  requirements: string
+  maxMembers: number | null
+  /** `yyyy-MM-ddTHH:mm:ss`，北京时间；空字符串表示不设置截止时间。 */
+  deadlineAt: string
+  tagIds: number[]
+}
+
+/** 提交给服务端的招募字段；负责人由服务端从 Token 解析。 */
+export interface RecruitmentInput {
+  categoryId: number
+  title: string
+  courseName: string
+  teacherName: string
+  purpose: string
+  description: string
+  requirements: string
+  maxMembers: number
+  deadlineAt: string | null
+  tagIds: number[]
+}
+
 export const statusLabels = {
   DRAFT: '草稿',
   RECRUITING: '招募中',

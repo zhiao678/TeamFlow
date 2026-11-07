@@ -22,6 +22,7 @@
 }
 .recruit input,
 .recruit select,
+.recruit textarea,
 .recruit button {
   font: inherit;
   border: 1px solid #cbd5e1;
@@ -30,6 +31,35 @@
   background: white;
   color: #233651;
   min-width: 0;
+}
+.recruit textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+.recruit input[type='checkbox'] {
+  padding: 0;
+  border: 0;
+  width: auto;
+}
+.recruit .danger {
+  background: #bf303f;
+  border-color: #bf303f;
+  color: white;
+}
+.recruit a.recruit-button {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  padding: 8px 12px;
+  background: white;
+  color: #233651;
+  text-decoration: none;
+}
+.recruit a.recruit-button.primary {
+  background: #315ed0;
+  border-color: #315ed0;
+  color: white;
 }
 .recruit button {
   cursor: pointer;
@@ -84,4 +114,84 @@
 }
 .recruit-facts dd {
   margin: 4px 0;
+}
+
+/* 发布与编辑表单 */
+.recruit-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 14px;
+}
+.recruit-form-grid > label {
+  display: grid;
+  gap: 5px;
+  font-size: 14px;
+  font-weight: 600;
+  align-content: start;
+}
+.recruit-label {
+  display: block;
+}
+.recruit .req {
+  color: #bf303f;
+  font-style: normal;
+  margin-left: 2px;
+}
+.recruit .span-2 {
+  grid-column: 1 / -1;
+}
+.recruit .hint {
+  color: #586a81;
+  font-size: 12px;
+  font-weight: 400;
+}
+.recruit .notice {
+  border: 1px solid #f0d9a8;
+  background: #fff8e8;
+  color: #7a5a13;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.recruit-form-tags {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+}
+.recruit-form-tags legend {
+  flex-basis: 100%;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 0;
+}
+.recruit-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+.recruit-form-actions {
+  margin-top: 18px;
+}
+.recruit-confirm {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fafbfe;
+  display: grid;
+  gap: 12px;
+}
+.recruit-confirm label {
+  display: grid;
+  gap: 5px;
+  font-size: 14px;
+}
+.recruit-list {
+  display: grid;
+  gap: 16px;
 }

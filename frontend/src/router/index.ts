@@ -26,10 +26,28 @@ const router = createRouter({
           meta: { title: '招募大厅' },
         },
         {
+          path: 'recruitments/new',
+          name: 'recruitment-new',
+          component: () => import('@/views/recruitment/RecruitmentEditorView.vue'),
+          meta: { title: '发布招募', requiresAuth: true },
+        },
+        {
+          path: 'recruitments/:id/edit',
+          name: 'recruitment-edit',
+          component: () => import('@/views/recruitment/RecruitmentEditorView.vue'),
+          meta: { title: '编辑招募', requiresAuth: true },
+        },
+        {
           path: 'recruitments/:id',
           name: 'recruitment-detail',
           component: () => import('@/views/recruitment/RecruitmentDetailView.vue'),
           meta: { title: '招募详情' },
+        },
+        {
+          path: 'my-recruitments',
+          name: 'my-recruitments',
+          component: () => import('@/views/recruitment/MyRecruitmentsView.vue'),
+          meta: { title: '我的招募', requiresAuth: true },
         },
         {
           path: 'dashboard',

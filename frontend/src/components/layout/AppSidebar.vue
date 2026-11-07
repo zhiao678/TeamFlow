@@ -4,6 +4,7 @@ const route = useRoute()
 defineProps<{ collapsed: boolean }>()
 const links = [
   { to: '/recruitments', label: '招募大厅', icon: '◎' },
+  { to: '/my-recruitments', label: '我的招募', icon: '✎' },
   { to: '/dashboard', label: '工作台', icon: '◫' },
   { to: '/projects', label: '项目', icon: '▣' },
   { to: '/tasks', label: '我的任务', icon: '☑' },

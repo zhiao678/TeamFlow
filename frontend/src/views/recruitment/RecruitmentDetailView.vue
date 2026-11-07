@@ -3,8 +3,10 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { getRecruitment } from '@/api/recruitment-query'
 import { useRecruitmentRead, useBrowseClock } from '@/composables/useRecruitmentRead'
+import { useAuthStore } from '@/stores/auth'
 import { displayStatus, displayDate } from '@/types/recruitment'
 const route = useRoute()
+const auth = useAuthStore()
 const id = computed(() => String(route.params.id))
 const valid = computed(() => /^[1-9]\d*$/.test(id.value) && Number.isSafeInteger(Number(id.value)))
 const {
@@ -17,6 +19,7 @@ const {
   (value, signal) => (valid.value ? getRecruitment(Number(value), signal) : Promise.resolve(null)),
 )
 const now = useBrowseClock()
+const owned = computed(() => !!item.value && auth.user?.id === item.value.ownerId)
 </script>
 <template>
   <main class="recruit">
@@ -34,6 +37,14 @@ const now = useBrowseClock()
       </div>
       <h1>{{ item.title }}</h1>
       <p>负责人：{{ item.ownerDisplayName }}</p>
+      <p v-if="owned" class="recruit-actions">
+        <RouterLink
+          class="recruit-button"
+          :to="{ name: 'recruitment-edit', params: { id: item.id } }"
+          >编辑这条招募</RouterLink
+        >
+        <RouterLink class="recruit-button" :to="{ name: 'my-recruitments' }">我的招募</RouterLink>
+      </p>
       <dl class="recruit-facts">
         <div>
           <dt>组队目的／活动</dt>
