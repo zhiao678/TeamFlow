@@ -1,4 +1,20 @@
 export type RecruitmentStatus = 'DRAFT' | 'RECRUITING' | 'TEAMED' | 'CLOSED'
+export interface PageResult<T> {
+  records: T[]
+  page: number
+  pageSize: number
+  total: number
+}
+export interface RecruitmentQuery {
+  keyword?: string
+  categoryId?: number
+  courseName?: string
+  teacherName?: string
+  status: Exclude<RecruitmentStatus, 'DRAFT'>
+  page: number
+  pageSize: number
+  sort: 'LATEST' | 'DEADLINE'
+}
 export interface Recruitment {
   id: number
   ownerId: number

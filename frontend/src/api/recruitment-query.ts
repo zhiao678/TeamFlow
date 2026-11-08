@@ -1,6 +1,6 @@
 import { request } from './request'
 import { isAxiosError } from 'axios'
-import type { Recruitment } from '@/types/recruitment'
+import type { Recruitment, RecruitmentQuery, PageResult } from '@/types/recruitment'
 
 class BusinessError extends Error {
   constructor(
@@ -15,10 +15,14 @@ async function read<T>(path: string, signal?: AbortSignal) {
   if (data.code !== 0) throw new BusinessError(data.code, data.message)
   return data.data
 }
-export async function getRecruitments(signal?: AbortSignal) {
-  const result = await read<Recruitment[]>('/recruitments', signal)
-  if (!Array.isArray(result)) throw new Error('招募列表格式已变化，请稍后重试。')
-  return result.filter((item) => item.status !== 'DRAFT')
+export async function getRecruitments(params: RecruitmentQuery, signal?: AbortSignal) {
+  const { data } = await request.get<{
+    code: number
+    message: string
+    data: PageResult<Recruitment>
+  }>('/recruitments', { params, signal })
+  if (data.code !== 0) throw new BusinessError(data.code, data.message)
+  return data.data
 }
 export const getRecruitment = (id: number, signal?: AbortSignal) =>
   read<Recruitment>(`/recruitments/${id}`, signal)

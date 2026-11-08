@@ -4,14 +4,12 @@ import { useRoute, useRouter } from 'vue-router'
 import RecruitmentCard from '@/components/recruitment/RecruitmentCard.vue'
 import { getRecruitments } from '@/api/recruitment-query'
 import { useRecruitmentRead, useBrowseClock } from '@/composables/useRecruitmentRead'
-import { statusLabels, timestamp } from '@/types/recruitment'
+import { listCategories } from '@/api/dictionaries'
+import type { RecruitmentQuery } from '@/types/recruitment'
+import { statusLabels } from '@/types/recruitment'
 const route = useRoute(),
   router = useRouter(),
   now = useBrowseClock()
-const { data, loading, error, retry } = useRecruitmentRead(
-  () => 'hall',
-  (_, signal) => getRecruitments(signal),
-)
 const blank = () => ({
   keyword: '',
   categoryId: '',
@@ -27,7 +25,7 @@ const applied = computed(() => {
     const v = route.query[k]
     if (typeof v === 'string' && v.trim()) f[k] = v.trim()
   }
-  if (!['RECRUITING', 'TEAMED', 'CLOSED', 'ALL'].includes(f.status)) f.status = 'RECRUITING'
+  if (!['RECRUITING', 'TEAMED', 'CLOSED'].includes(f.status)) f.status = 'RECRUITING'
   if (f.sort !== 'DEADLINE') f.sort = 'LATEST'
   return f
 })
@@ -41,40 +39,37 @@ function apply(reset = false) {
   )
   void router.push({ name: 'recruitment-hall', query })
 }
-const categories = computed(() =>
-  Array.from(new Map((data.value || []).map((r) => [r.categoryId, r.categoryName]))),
+const positive = (value: unknown, fallback: number) => {
+  const n = Number(value)
+  return Number.isSafeInteger(n) && n > 0 ? n : fallback
+}
+const query = computed<RecruitmentQuery>(() => ({
+  ...applied.value,
+  categoryId: applied.value.categoryId
+    ? positive(applied.value.categoryId, 0) || undefined
+    : undefined,
+  status: applied.value.status as RecruitmentQuery['status'],
+  sort: applied.value.sort as RecruitmentQuery['sort'],
+  page: positive(route.query.page, 1),
+  pageSize: Math.min(100, positive(route.query.pageSize, 20)),
+}))
+const { data, loading, error, retry } = useRecruitmentRead(
+  () => JSON.stringify(query.value),
+  (key, signal) => getRecruitments(JSON.parse(key) as RecruitmentQuery, signal),
 )
-const matches = computed(() => {
-  const f = applied.value
-  const includes = (s: string | null, q: string) =>
-    (s || '').toLowerCase().includes(q.toLowerCase())
-  const rows = (data.value || []).filter(
-    (r) =>
-      (f.status === 'ALL' || r.status === f.status) &&
-      (!f.categoryId || String(r.categoryId) === f.categoryId) &&
-      includes(r.courseName, f.courseName) &&
-      includes(r.teacherName, f.teacherName) &&
-      [r.title, r.purpose, r.courseName, r.teacherName].some((s) => includes(s, f.keyword)),
-  )
-  // Upcoming deadlines first. Expired and undated posts remain browsable.
-  const end = (s: string | null) => {
-    const value = s ? timestamp(s) : NaN
-    return value > now.value ? value : Infinity
-  }
-  return rows.sort(
-    (a, b) =>
-      (f.sort === 'DEADLINE' ? end(a.deadlineAt) - end(b.deadlineAt) : 0) ||
-      timestamp(b.createdAt) - timestamp(a.createdAt) ||
-      b.id - a.id,
-  )
-})
-const size = 20
-const pages = computed(() => Math.max(1, Math.ceil(matches.value.length / size)))
-const page = computed(() => {
-  const n = Number(route.query.page)
-  return Number.isSafeInteger(n) ? Math.min(pages.value, Math.max(1, n)) : 1
-})
-const visible = computed(() => matches.value.slice((page.value - 1) * size, page.value * size))
+const {
+  data: categories,
+  error: categoryError,
+  retry: retryCategories,
+} = useRecruitmentRead(
+  () => 'categories',
+  () => listCategories(),
+)
+const pages = computed(() =>
+  Math.max(1, Math.ceil((data.value?.total ?? 0) / (data.value?.pageSize ?? query.value.pageSize))),
+)
+const page = computed(() => data.value?.page ?? query.value.page)
+const visible = computed(() => data.value?.records ?? [])
 function go(n: number) {
   void router.push({
     name: 'recruitment-hall',
@@ -96,14 +91,15 @@ function go(n: number) {
       <label
         >分类<select v-model="form.categoryId">
           <option value="">全部分类</option>
-          <option v-for="[id, name] in categories" :key="id" :value="String(id)">{{ name }}</option>
+          <option v-for="item in categories" :key="item.id" :value="String(item.id)">
+            {{ item.name }}
+          </option>
         </select></label
       >
       <label>课程<input v-model="form.courseName" placeholder="课程名称" /></label
       ><label>教师<input v-model="form.teacherName" placeholder="教师姓名" /></label>
       <label
         >状态<select v-model="form.status" aria-label="状态">
-          <option value="ALL">全部公开状态</option>
           <option v-for="s in ['RECRUITING', 'TEAMED', 'CLOSED'] as const" :key="s" :value="s">
             {{ statusLabels[s] }}
           </option>
@@ -120,13 +116,16 @@ function go(n: number) {
         ><button type="button" @click="apply(true)">清除条件</button>
       </div>
     </form>
+    <p v-if="categoryError" role="alert">
+      分类加载失败：{{ categoryError }} <button @click="retryCategories">重试分类</button>
+    </p>
     <p v-if="loading" role="status">正在加载招募…</p>
     <section v-else-if="error" role="alert">
       <p>{{ error }}</p>
       <button @click="retry">重试</button>
     </section>
     <template v-else
-      ><p>共 {{ matches.length }} 条结果 · 当前在浏览器内筛选、排序和分页。</p>
+      ><p>共 {{ data?.total ?? 0 }} 条结果</p>
       <div v-if="visible.length" class="recruit-grid">
         <RecruitmentCard v-for="row in visible" :key="row.id" :item="row" :now="now" />
       </div>
