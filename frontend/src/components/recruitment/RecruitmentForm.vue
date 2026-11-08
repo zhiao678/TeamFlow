@@ -8,6 +8,7 @@ const props = defineProps<{
   currentMembers: number
   errors: Record<string, string>
   unmatchedTags: string[]
+  coreLocked: boolean
   disabled: boolean
 }>()
 const emit = defineEmits<{ 'tags-change': [] }>()
@@ -19,6 +20,9 @@ function toggleTag() {
 
 <template>
   <form class="recruit-form" novalidate @submit.prevent>
+    <p v-if="props.coreLocked" class="notice">
+      招募中仅可修改说明、要求、技能、截止时间和人数上限。
+    </p>
     <p v-if="props.unmatchedTags.length" class="notice" role="note">
       该招募带有选项之外的标签：{{ props.unmatchedTags.join('、') }}。当前详情只返回标签名称，
       未改动标签时保存不会提交标签，以免覆盖原有内容。
@@ -28,7 +32,7 @@ function toggleTag() {
         <span class="recruit-label">分类 <i class="req" aria-hidden="true">*</i></span>
         <select
           v-model="form.categoryId"
-          :disabled="props.disabled"
+          :disabled="props.disabled || props.coreLocked"
           :aria-invalid="!!props.errors.categoryId"
         >
           <option :value="null" disabled>请选择分类</option>
@@ -46,7 +50,7 @@ function toggleTag() {
         <input
           v-model="form.title"
           maxlength="150"
-          :disabled="props.disabled"
+          :disabled="props.disabled || props.coreLocked"
           :aria-invalid="!!props.errors.title"
           placeholder="例如：寻找 Java 课程汇报队友"
         />
@@ -59,7 +63,7 @@ function toggleTag() {
         <input
           v-model="form.courseName"
           maxlength="100"
-          :disabled="props.disabled"
+          :disabled="props.disabled || props.coreLocked"
           :aria-invalid="!!props.errors.courseName"
           placeholder="课堂组队建议填写"
         />
@@ -73,7 +77,7 @@ function toggleTag() {
         <input
           v-model="form.teacherName"
           maxlength="100"
-          :disabled="props.disabled"
+          :disabled="props.disabled || props.coreLocked"
           :aria-invalid="!!props.errors.teacherName"
           placeholder="教师姓名"
         />
@@ -89,7 +93,7 @@ function toggleTag() {
         <input
           v-model="form.purpose"
           maxlength="200"
-          :disabled="props.disabled"
+          :disabled="props.disabled || props.coreLocked"
           :aria-invalid="!!props.errors.purpose"
           placeholder="例如：完成课程期末汇报"
         />
@@ -101,6 +105,7 @@ function toggleTag() {
         <span class="recruit-label">详细说明</span>
         <textarea
           v-model="form.description"
+          maxlength="20000"
           rows="4"
           :disabled="props.disabled"
           placeholder="计划、时间安排、预期投入等"
@@ -111,6 +116,7 @@ function toggleTag() {
         <span class="recruit-label">招募要求</span>
         <textarea
           v-model="form.requirements"
+          maxlength="20000"
           rows="3"
           :disabled="props.disabled"
           placeholder="对队友的技能、时间或分工要求"

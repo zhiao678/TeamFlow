@@ -3,9 +3,8 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   closeRecruitment,
-  isMyRecruitmentsUnavailable,
   listMyRecruitments,
-  listRecruitmentsForOwnerFallback,
+  deleteRecruitmentDraft,
   managementMessage,
   publishRecruitment,
 } from '@/api/recruitment-management'
@@ -27,7 +26,6 @@ const loading = ref(true)
 const error = ref('')
 const failure = ref('')
 const notice = ref('')
-const degraded = ref(false)
 const busyId = ref(0)
 const closingId = ref(0)
 const closeReason = ref('')
@@ -68,20 +66,8 @@ async function load() {
   failure.value = ''
   try {
     rows.value = await listMyRecruitments()
-    degraded.value = false
   } catch (cause) {
-    if (!isMyRecruitmentsUnavailable(cause)) {
-      error.value = managementMessage(cause)
-      loading.value = false
-      return
-    }
-    try {
-      const all = await listRecruitmentsForOwnerFallback()
-      rows.value = all.filter((row) => row.ownerId === auth.user?.id)
-      degraded.value = true
-    } catch (fallbackCause) {
-      error.value = managementMessage(fallbackCause)
-    }
+    error.value = managementMessage(cause)
   } finally {
     loading.value = false
   }
@@ -127,6 +113,26 @@ async function confirmClose(row: Recruitment) {
     busyId.value = 0
   }
 }
+async function removeDraft(row: Recruitment) {
+  if (
+    busyId.value ||
+    row.status !== 'DRAFT' ||
+    !window.confirm(`确定删除草稿《${row.title}》吗？删除后无法恢复。`)
+  )
+    return
+  busyId.value = row.id
+  failure.value = ''
+  notice.value = ''
+  try {
+    await deleteRecruitmentDraft(row.id)
+    rows.value = rows.value.filter((item) => item.id !== row.id)
+    notice.value = '草稿已删除。'
+  } catch (cause) {
+    failure.value = managementMessage(cause)
+  } finally {
+    busyId.value = 0
+  }
+}
 </script>
 
 <template>
@@ -143,11 +149,6 @@ async function confirmClose(row: Recruitment) {
       >
       <button type="button" :disabled="loading" @click="load">刷新</button>
     </div>
-
-    <p v-if="degraded" class="notice" role="note">
-      正式接口 <code>GET /api/recruitments/mine</code> 尚未提供，当前从公开列表中按负责人过滤，
-      属于临时方案；接口补齐后需要替换数据来源。
-    </p>
 
     <nav class="recruit-actions" aria-label="按状态筛选">
       <button
@@ -223,10 +224,10 @@ async function confirmClose(row: Recruitment) {
             <button
               v-if="row.status === 'DRAFT'"
               type="button"
-              disabled
-              title="删除草稿接口（DELETE /api/recruitments/{id}）尚未提供"
+              :disabled="!!busyId"
+              @click="removeDraft(row)"
             >
-              删除（接口未提供）
+              删除草稿
             </button>
           </div>
           <div

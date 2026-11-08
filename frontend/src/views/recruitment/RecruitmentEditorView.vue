@@ -4,8 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import RecruitmentForm from '@/components/recruitment/RecruitmentForm.vue'
 import { browseError, getRecruitment } from '@/api/recruitment-query'
 import {
-  FALLBACK_CATEGORIES,
-  FALLBACK_TAGS,
+  deleteRecruitmentDraft,
   closeRecruitment,
   createRecruitment,
   listCategories,
@@ -55,7 +54,8 @@ const notice = ref('')
 const errors = ref<Record<string, string>>({})
 const categories = ref<RecruitmentTagOption[]>([])
 const tags = ref<RecruitmentTagOption[]>([])
-const optionsFallback = ref(false)
+const optionsError = ref('')
+const optionsLoading = ref(false)
 const unmatchedTags = ref<string[]>([])
 const tagsDirty = ref(false)
 
@@ -75,12 +75,18 @@ watch(
 )
 
 async function loadOptions() {
-  const [category, tag] = await Promise.allSettled([listCategories(), listTags()])
-  const loadedCategories = category.status === 'fulfilled' ? category.value : []
-  const loadedTags = tag.status === 'fulfilled' ? tag.value : []
-  categories.value = loadedCategories.length ? loadedCategories : FALLBACK_CATEGORIES
-  tags.value = loadedTags.length ? loadedTags : FALLBACK_TAGS
-  optionsFallback.value = !loadedCategories.length || !loadedTags.length
+  optionsLoading.value = true
+  optionsError.value = ''
+  try {
+    const [category, tag] = await Promise.all([listCategories(), listTags()])
+    categories.value = category
+    tags.value = tag
+    if (record.value && !tagsDirty.value) applyTags(record.value.tags)
+  } catch (cause) {
+    optionsError.value = managementMessage(cause)
+  } finally {
+    optionsLoading.value = false
+  }
 }
 
 function applyTags(names: string[]) {
@@ -151,6 +157,13 @@ function validate(publishing: boolean) {
   else if (form.maxMembers < 2) next.maxMembers = '总人数至少为 2（含负责人）。'
   else if (form.maxMembers < currentMembers.value)
     next.maxMembers = `不能小于当前在队人数（${currentMembers.value} 人）。`
+  if (form.tagIds.length > 20) next.tagIds = '最多选择 20 个技能标签。'
+  if (form.description.length > 20000 || form.requirements.length > 20000)
+    next.content = '说明和要求最多各 20000 个字符。'
+  if (form.maxMembers !== null && !Number.isInteger(form.maxMembers))
+    next.maxMembers = '人数必须为整数。'
+  if (record.value?.deadlineAt && !form.deadlineAt)
+    next.deadlineAt = '已有截止时间不支持清空，请选择新的时间。'
   const deadline = normaliseDeadline(form.deadlineAt)
   if (form.deadlineAt && !deadline) next.deadlineAt = '截止时间格式不正确，请重新选择。'
   if (publishing && deadline && timestamp(deadline) <= Date.now())
@@ -175,10 +188,14 @@ function toInput(): RecruitmentInput {
 }
 
 async function save(publish: boolean) {
-  if (submitting.value || locked.value) return
+  if (submitting.value || locked.value || optionsLoading.value || optionsError.value) return
   if (editing.value && !isOwner.value) return
   formError.value = ''
   notice.value = ''
+  if (unmatchedTags.value.length && tagsDirty.value) {
+    formError.value = '部分原有标签无法匹配选项，请先确认标签数据后再修改。'
+    return
+  }
   if (!validate(publish)) return
   submitting.value = true
   try {
@@ -190,6 +207,7 @@ async function save(publish: boolean) {
     }
     const saved = await updateRecruitment(id.value, input, {
       includeTagIds: !unmatchedTags.value.length || tagsDirty.value,
+      status: record.value!.status,
     })
     record.value = saved
     const publishDraft = publish && saved.status === 'DRAFT'
@@ -220,6 +238,25 @@ async function confirmClose() {
     submitting.value = false
   }
 }
+async function removeDraft() {
+  if (
+    submitting.value ||
+    !isOwner.value ||
+    record.value?.status !== 'DRAFT' ||
+    !window.confirm('确定删除这条草稿吗？删除后无法恢复。')
+  )
+    return
+  submitting.value = true
+  formError.value = ''
+  try {
+    await deleteRecruitmentDraft(id.value)
+    await router.replace({ name: 'my-recruitments' })
+  } catch (cause) {
+    formError.value = managementMessage(cause)
+  } finally {
+    submitting.value = false
+  }
+}
 </script>
 
 <template>
@@ -241,9 +278,9 @@ async function confirmClose() {
       <p v-else>负责人由当前登录账号自动担任，并计入第一个成员名额。</p>
     </header>
 
-    <p v-if="optionsFallback" class="notice" role="note">
-      分类与技能选项接口（<code>GET /api/categories</code>、<code>GET /api/tags</code>）尚未提供，
-      当前使用与演示数据一致的临时选项，接口补齐后需替换。
+    <p v-if="optionsLoading" role="status">正在加载分类和标签…</p>
+    <p v-if="optionsError" role="alert">
+      {{ optionsError }} <button @click="loadOptions">重试选项</button>
     </p>
 
     <p v-if="loading" role="status">正在加载招募…</p>
@@ -274,9 +311,10 @@ async function confirmClose() {
           :categories="categories"
           :tags="tags"
           :current-members="currentMembers"
+          :core-locked="record?.status === 'RECRUITING'"
           :errors="errors"
           :unmatched-tags="unmatchedTags"
-          :disabled="submitting || locked"
+          :disabled="submitting || optionsLoading || !!optionsError || locked"
           @tags-change="tagsDirty = true"
         />
 
@@ -287,7 +325,7 @@ async function confirmClose() {
           <button
             class="primary"
             type="button"
-            :disabled="submitting || (editing && !isOwner)"
+            :disabled="submitting || optionsLoading || !!optionsError || (editing && !isOwner)"
             @click="save(false)"
           >
             {{ submitting ? '处理中…' : editing ? '保存修改' : '保存草稿' }}
@@ -295,7 +333,7 @@ async function confirmClose() {
           <button
             v-if="!editing || record?.status === 'DRAFT'"
             type="button"
-            :disabled="submitting || (editing && !isOwner)"
+            :disabled="submitting || optionsLoading || !!optionsError || (editing && !isOwner)"
             @click="save(true)"
           >
             {{ editing ? '发布招募' : '直接发布' }}
@@ -312,10 +350,10 @@ async function confirmClose() {
           <button
             v-if="editing && record?.status === 'DRAFT'"
             type="button"
-            disabled
-            title="删除草稿接口（DELETE /api/recruitments/{id}）尚未提供"
+            :disabled="submitting"
+            @click="removeDraft"
           >
-            删除草稿（接口未提供）
+            删除草稿
           </button>
         </div>
 
