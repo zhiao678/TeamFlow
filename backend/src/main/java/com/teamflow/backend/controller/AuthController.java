@@ -32,4 +32,9 @@ public class AuthController {
     public Result<AuthVO> login(@Valid @RequestBody LoginRequest request) {
         return Result.success(authService.login(request));
     }
+
+    @PostMapping("/logout")
+    public Result<Void> logout() {
+        return Result.success();
+    }
 }

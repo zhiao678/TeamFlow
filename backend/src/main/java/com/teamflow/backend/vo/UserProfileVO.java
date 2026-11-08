@@ -10,6 +10,8 @@ public record UserProfileVO(
         String department,
         String grade,
         String bio,
+        String platformRole,
+        String accountStatus,
         List<String> skills
 ) {
 }

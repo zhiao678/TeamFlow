@@ -77,7 +77,7 @@ class RecruitmentApiTests {
         mockMvc.perform(get("/api/recruitments"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
-                .andExpect(jsonPath("$.data", hasSize(0)));
+                .andExpect(jsonPath("$.data.records", hasSize(0)));
 
         String response = mockMvc.perform(post("/api/recruitments")
                         .header("Authorization", "Bearer " + token)
@@ -99,7 +99,7 @@ class RecruitmentApiTests {
                 .andExpect(jsonPath("$.data.ownerDisplayName").value("Alice"));
         mockMvc.perform(get("/api/recruitments"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data", hasSize(1)));
+                .andExpect(jsonPath("$.data.records", hasSize(1)));
     }
 
     @Test

@@ -5,6 +5,8 @@ import com.teamflow.backend.common.auth.CurrentUserContext;
 import com.teamflow.backend.common.auth.JwtTokenService;
 import com.teamflow.backend.common.exception.BusinessException;
 import com.teamflow.backend.common.exception.ErrorCode;
+import com.teamflow.backend.common.enums.AccountStatus;
+import com.teamflow.backend.common.enums.PlatformRole;
 import com.teamflow.backend.dto.LoginRequest;
 import com.teamflow.backend.dto.RegisterRequest;
 import com.teamflow.backend.dto.UpdateProfileRequest;
@@ -55,16 +57,19 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public AuthVO register(RegisterRequest request) {
+        String username = request.username().trim();
         User existing = userMapper.selectOne(Wrappers.<User>lambdaQuery()
-                .eq(User::getUsername, request.username()));
+                .eq(User::getUsername, username));
         if (existing != null) {
             throw new BusinessException(ErrorCode.CONFLICT, "username already exists");
         }
 
         User user = new User();
-        user.setUsername(request.username().trim());
+        user.setUsername(username);
         user.setPasswordHash(passwordEncoder.encode(request.password()));
         user.setDisplayName(request.displayName().trim());
+        user.setPlatformRole(PlatformRole.USER.name());
+        user.setAccountStatus(AccountStatus.ACTIVE.name());
         userMapper.insert(user);
 
         UserProfile profile = new UserProfile();
@@ -77,9 +82,12 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public AuthVO login(LoginRequest request) {
         User user = userMapper.selectOne(Wrappers.<User>lambdaQuery()
-                .eq(User::getUsername, request.username()));
+                .eq(User::getUsername, request.username().trim()));
         if (user == null || !passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED, "username or password is invalid");
+        }
+        if (AccountStatus.DISABLED.name().equals(user.getAccountStatus())) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "account is disabled");
         }
         return new AuthVO(jwtTokenService.createToken(user.getId()), toView(user));
     }
@@ -94,7 +102,13 @@ public class AuthServiceImpl implements AuthService {
     public UserProfileVO updateProfile(UpdateProfileRequest request) {
         Long userId = CurrentUserContext.require();
         User user = requireUser(userId);
-        if (request.displayName() != null) user.setDisplayName(request.displayName().trim());
+        if (request.displayName() != null) {
+            String displayName = request.displayName().trim();
+            if (displayName.isEmpty()) {
+                throw new BusinessException(ErrorCode.INVALID_REQUEST, "displayName cannot be blank");
+            }
+            user.setDisplayName(displayName);
+        }
         if (request.avatarUrl() != null) user.setAvatarUrl(request.avatarUrl());
         userMapper.updateById(user);
 
@@ -109,6 +123,7 @@ public class AuthServiceImpl implements AuthService {
         if (request.bio() != null) profile.setBio(request.bio());
         if (profile.getCreatedAt() == null) userProfileMapper.insert(profile);
         else userProfileMapper.updateById(profile);
+        if (request.tagIds() != null) replaceTags(userId, request.tagIds());
         return loadProfile(userId);
     }
 
@@ -123,15 +138,36 @@ public class AuthServiceImpl implements AuthService {
                 .toList();
         if (profile == null) {
             return new UserProfileVO(user.getId(), user.getUsername(), user.getDisplayName(),
-                    user.getAvatarUrl(), null, null, null, skills);
+                    user.getAvatarUrl(), null, null, null, user.getPlatformRole(),
+                    user.getAccountStatus(), skills);
         }
         return new UserProfileVO(user.getId(), user.getUsername(), user.getDisplayName(),
-                user.getAvatarUrl(), profile.getDepartment(), profile.getGrade(), profile.getBio(), skills);
+                user.getAvatarUrl(), profile.getDepartment(), profile.getGrade(), profile.getBio(),
+                user.getPlatformRole(), user.getAccountStatus(), skills);
     }
 
     private UserProfileVO toView(User user) {
         return new UserProfileVO(user.getId(), user.getUsername(), user.getDisplayName(),
-                user.getAvatarUrl(), null, null, null, Collections.emptyList());
+                user.getAvatarUrl(), null, null, null, user.getPlatformRole(),
+                user.getAccountStatus(), Collections.emptyList());
+    }
+
+    private void replaceTags(Long userId, List<Long> tagIds) {
+        List<Long> distinctTagIds = tagIds.stream().distinct().toList();
+        for (Long tagId : distinctTagIds) {
+            Tag tag = tagMapper.selectById(tagId);
+            if (tag == null || !Integer.valueOf(1).equals(tag.getEnabled())) {
+                throw new BusinessException(ErrorCode.INVALID_REQUEST, "tag is invalid: " + tagId);
+            }
+        }
+
+        userTagMapper.deleteByUserId(userId);
+        for (Long tagId : distinctTagIds) {
+            UserTag userTag = new UserTag();
+            userTag.setUserId(userId);
+            userTag.setTagId(tagId);
+            userTagMapper.insert(userTag);
+        }
     }
 
     private User requireUser(Long userId) {
