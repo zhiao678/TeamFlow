@@ -5,6 +5,7 @@ import com.teamflow.backend.common.auth.CurrentUserContext;
 import com.teamflow.backend.common.exception.BusinessException;
 import com.teamflow.backend.common.exception.ErrorCode;
 import com.teamflow.backend.dto.CreateRecruitmentRequest;
+import com.teamflow.backend.dto.RecruitmentQueryRequest;
 import com.teamflow.backend.dto.UpdateRecruitmentRequest;
 import com.teamflow.backend.entity.Category;
 import com.teamflow.backend.entity.Recruitment;
@@ -17,10 +18,14 @@ import com.teamflow.backend.mapper.RecruitmentTagMapper;
 import com.teamflow.backend.mapper.TagMapper;
 import com.teamflow.backend.mapper.TeamMemberMapper;
 import com.teamflow.backend.service.RecruitmentService;
+import com.teamflow.backend.vo.CategoryVO;
+import com.teamflow.backend.vo.RecruitmentPageVO;
 import com.teamflow.backend.vo.RecruitmentVO;
+import com.teamflow.backend.vo.TagVO;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -47,10 +52,40 @@ public class RecruitmentServiceImpl implements RecruitmentService {
     }
 
     @Override
-    public List<RecruitmentVO> listRecruitments() {
+    @Transactional(readOnly = true)
+    public RecruitmentPageVO listRecruitments(RecruitmentQueryRequest request) {
         Long userId = CurrentUserContext.get();
-        return recruitmentMapper.selectVisibleList(userId).stream()
+        long total = recruitmentMapper.countPage(request, userId);
+        long offset = ((long) request.page() - 1) * request.pageSize();
+        List<RecruitmentVO> records = recruitmentMapper.selectPage(request, userId, offset).stream()
                 .map(this::fillTags)
+                .toList();
+        return new RecruitmentPageVO(records, request.page(), request.pageSize(), total);
+    }
+
+    @Override
+    public List<RecruitmentVO> listMyRecruitments() {
+        return recruitmentMapper.selectMine(CurrentUserContext.require()).stream()
+                .map(this::fillTags)
+                .toList();
+    }
+
+    @Override
+    public List<CategoryVO> listCategories() {
+        return categoryMapper.selectList(Wrappers.<Category>lambdaQuery()
+                        .eq(Category::getEnabled, 1)
+                        .orderByAsc(Category::getSortOrder, Category::getId)).stream()
+                .map(category -> new CategoryVO(category.getId(), category.getName(),
+                        category.getParentId(), category.getSortOrder()))
+                .toList();
+    }
+
+    @Override
+    public List<TagVO> listTags() {
+        return tagMapper.selectList(Wrappers.<Tag>lambdaQuery()
+                        .eq(Tag::getEnabled, 1)
+                        .orderByAsc(Tag::getName, Tag::getId)).stream()
+                .map(tag -> new TagVO(tag.getId(), tag.getName()))
                 .toList();
     }
 
@@ -59,7 +94,7 @@ public class RecruitmentServiceImpl implements RecruitmentService {
         RecruitmentVO recruitment = recruitmentMapper.selectDetail(id);
         if (recruitment == null) throw new BusinessException(ErrorCode.DATA_NOT_FOUND, "recruitment not found");
         if ("DRAFT".equals(recruitment.getStatus())
-                && !Long.valueOf(recruitment.getOwnerId()).equals(CurrentUserContext.get())) {
+                && !recruitment.getOwnerId().equals(CurrentUserContext.get())) {
             throw new BusinessException(ErrorCode.DATA_NOT_FOUND, "recruitment not found");
         }
         return fillTags(recruitment);
@@ -95,30 +130,42 @@ public class RecruitmentServiceImpl implements RecruitmentService {
     @Transactional
     public RecruitmentVO updateRecruitment(Long id, UpdateRecruitmentRequest request) {
         Recruitment recruitment = requireOwnedRecruitment(id);
-        if ("TEAMED".equals(recruitment.getStatus()) || "CLOSED".equals(recruitment.getStatus())) {
+        if (!"DRAFT".equals(recruitment.getStatus()) && !"RECRUITING".equals(recruitment.getStatus())) {
             throw new BusinessException(ErrorCode.CONFLICT, "recruitment cannot be edited in its current state");
+        }
+        if ("RECRUITING".equals(recruitment.getStatus())
+                && (request.categoryId() != null || request.title() != null
+                || request.courseName() != null || request.teacherName() != null || request.purpose() != null)) {
+            throw new BusinessException(ErrorCode.CONFLICT,
+                    "only description, requirements, tags, deadline and maxMembers can be edited while recruiting");
         }
         if (request.categoryId() != null) {
             requireCategory(request.categoryId());
             recruitment.setCategoryId(request.categoryId());
         }
-        if (request.title() != null) recruitment.setTitle(request.title().trim());
+        if (request.title() != null) {
+            if (request.title().isBlank()) {
+                throw new BusinessException(ErrorCode.INVALID_REQUEST, "title cannot be blank");
+            }
+            recruitment.setTitle(request.title().trim());
+        }
         if (request.courseName() != null) recruitment.setCourseName(request.courseName());
         if (request.teacherName() != null) recruitment.setTeacherName(request.teacherName());
-        if (request.purpose() != null) recruitment.setPurpose(request.purpose().trim());
+        if (request.purpose() != null) {
+            if (request.purpose().isBlank()) {
+                throw new BusinessException(ErrorCode.INVALID_REQUEST, "purpose cannot be blank");
+            }
+            recruitment.setPurpose(request.purpose().trim());
+        }
         if (request.description() != null) recruitment.setDescription(request.description());
         if (request.requirements() != null) recruitment.setRequirements(request.requirements());
         if (request.maxMembers() != null) {
-            long memberCount = teamMemberMapper.selectCount(Wrappers.<TeamMember>lambdaQuery()
-                    .eq(TeamMember::getRecruitmentId, id)
-                    .eq(TeamMember::getStatus, "ACTIVE"));
-            if (request.maxMembers() < memberCount) {
-                throw new BusinessException(ErrorCode.INVALID_REQUEST, "maxMembers cannot be less than current members");
-            }
+            validateCapacity(id, request.maxMembers());
             recruitment.setMaxMembers(request.maxMembers());
         }
         if (request.deadlineAt() != null) recruitment.setDeadlineAt(request.deadlineAt());
         validateTags(request.tagIds());
+        recruitment.setUpdatedAt(LocalDateTime.now());
         recruitmentMapper.updateById(recruitment);
         if (request.tagIds() != null) replaceTags(id, request.tagIds());
         return getRecruitment(id);
@@ -131,10 +178,18 @@ public class RecruitmentServiceImpl implements RecruitmentService {
         if (!"DRAFT".equals(recruitment.getStatus())) {
             throw new BusinessException(ErrorCode.CONFLICT, "only draft recruitment can be published");
         }
-        if (recruitment.getTitle() == null || recruitment.getPurpose() == null) {
+        if (recruitment.getTitle() == null || recruitment.getTitle().isBlank()
+                || recruitment.getPurpose() == null || recruitment.getPurpose().isBlank()) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "title and purpose are required");
         }
+        requireCategory(recruitment.getCategoryId());
+        validateTags(recruitmentTagMapper.selectTagIds(id));
+        if (recruitment.getMaxMembers() == null || recruitment.getMaxMembers() < 2) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "maxMembers must be at least 2");
+        }
+        validateCapacity(id, recruitment.getMaxMembers());
         recruitment.setStatus("RECRUITING");
+        recruitment.setUpdatedAt(LocalDateTime.now());
         recruitmentMapper.updateById(recruitment);
         return getRecruitment(id);
     }
@@ -143,19 +198,33 @@ public class RecruitmentServiceImpl implements RecruitmentService {
     @Transactional
     public RecruitmentVO closeRecruitment(Long id, String reason) {
         Recruitment recruitment = requireOwnedRecruitment(id);
-        if ("TEAMED".equals(recruitment.getStatus()) || "CLOSED".equals(recruitment.getStatus())) {
-            throw new BusinessException(ErrorCode.CONFLICT, "recruitment is already finished");
+        if (!"RECRUITING".equals(recruitment.getStatus())) {
+            throw new BusinessException(ErrorCode.CONFLICT, "only recruiting recruitment can be closed");
         }
         recruitment.setStatus("CLOSED");
         recruitment.setCloseReason(reason);
+        recruitment.setUpdatedAt(LocalDateTime.now());
         recruitmentMapper.updateById(recruitment);
         return getRecruitment(id);
     }
 
+    @Override
+    @Transactional
+    public void deleteDraft(Long id) {
+        Recruitment recruitment = requireOwnedRecruitment(id);
+        if (!"DRAFT".equals(recruitment.getStatus())) {
+            throw new BusinessException(ErrorCode.CONFLICT, "only draft recruitment can be deleted");
+        }
+        recruitmentTagMapper.deleteByRecruitmentId(id);
+        teamMemberMapper.delete(Wrappers.<TeamMember>lambdaQuery().eq(TeamMember::getRecruitmentId, id));
+        recruitmentMapper.deleteById(id);
+    }
+
     private Recruitment requireOwnedRecruitment(Long id) {
-        Recruitment recruitment = recruitmentMapper.selectById(id);
+        Long userId = CurrentUserContext.require();
+        Recruitment recruitment = recruitmentMapper.selectForUpdate(id);
         if (recruitment == null) throw new BusinessException(ErrorCode.DATA_NOT_FOUND, "recruitment not found");
-        if (!recruitment.getOwnerId().equals(CurrentUserContext.require())) {
+        if (!recruitment.getOwnerId().equals(userId)) {
             throw new BusinessException(ErrorCode.FORBIDDEN, "only the owner can manage this recruitment");
         }
         return recruitment;
@@ -165,6 +234,15 @@ public class RecruitmentServiceImpl implements RecruitmentService {
         Category category = categoryMapper.selectById(categoryId);
         if (category == null || !Integer.valueOf(1).equals(category.getEnabled())) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "category is invalid");
+        }
+    }
+
+    private void validateCapacity(Long recruitmentId, int maxMembers) {
+        long memberCount = teamMemberMapper.selectCount(Wrappers.<TeamMember>lambdaQuery()
+                .eq(TeamMember::getRecruitmentId, recruitmentId)
+                .eq(TeamMember::getStatus, "ACTIVE"));
+        if (maxMembers < memberCount) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "maxMembers cannot be less than current members");
         }
     }
 

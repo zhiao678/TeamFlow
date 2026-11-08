@@ -13,7 +13,7 @@
 ## 环境要求
 
 - JDK 17
-- MySQL 8.0
+- MySQL 8.0.16 及以上
 - 无需单独安装 Maven，使用项目自带的 Maven Wrapper
 
 检查 Java 与 Maven 使用的运行时：
@@ -34,7 +34,7 @@ cd backend
 SOURCE C:/path/to/TeamFlow/database/recruitment-init.sql;
 ```
 
-脚本会创建并使用 `teamflow_recruitment` 数据库，包含用户、资料、分类、标签、招募、申请和成员等基础表及演示数据。
+脚本会创建并使用 `teamflow_recruitment` 数据库，包含用户、资料、分类、标签、招募、申请、成员和后续数据基础共 18 张表及演示数据。后续表的完整字段、约束和事务设计见 ER 文档。
 
 脚本会删除并重建该数据库中的同名开发表，不得用于需要保留真实数据的环境。原项目的 `database/init.sql` 和 `teamflow` 数据库暂时保留，两套脚本互不覆盖。
 
@@ -107,6 +107,22 @@ Authorization: Bearer <token>
 
 用户平台角色：`USER / ADMIN`。账号状态：`ACTIVE / RESTRICTED / DISABLED`。
 
+## 招募接口
+
+| 方法 | 路径 | 用途 |
+|---|---|---|
+| `GET` | `/api/recruitments` | 分页、关键词、分类、课程、教师、状态、最新或截止时间排序 |
+| `GET` | `/api/recruitments/{id}` | 详情，草稿仅负责人可读 |
+| `GET` | `/api/recruitments/mine` | 当前负责人全部状态招募 |
+| `POST` | `/api/recruitments` | 创建草稿或直接发布 |
+| `PATCH` | `/api/recruitments/{id}` | 按状态编辑允许字段 |
+| `POST` | `/api/recruitments/{id}/publish` | 发布草稿 |
+| `POST` | `/api/recruitments/{id}/close` | 关闭招募中记录 |
+| `DELETE` | `/api/recruitments/{id}` | 删除草稿 |
+| `GET` | `/api/categories`、`/api/tags` | 查询启用分类和技能标签 |
+
+大厅返回 `data.records/page/pageSize/total`，我的招募返回数组。所有管理操作均检查 JWT 和负责人权限。参数与返回示例见招募 API 规范。
+
 ## 统一响应
 
 成功响应：
@@ -150,6 +166,7 @@ Java 基础包为 `com.teamflow.backend`：
 - 新版接口规范：[recruitment-api-spec.md](../docs/recruitment-api-spec.md)
 - 新版业务规则：[recruitment-decisions.md](../docs/recruitment-decisions.md)
 - 新版 ER 设计：[recruitment-er.md](../docs/recruitment-er.md)
+- [李锐招募模块任务完成说明](../李锐-招募模块任务完成说明.md)
 - 旧项目/任务接口规范：[api-spec.md](../docs/api-spec.md)
 
 旧项目、任务代码和 `database/init.sql` 暂时保留，避免破坏已有演示与测试。新版功能使用 `teamflow_recruitment` 数据库和 `recruitment` Spring Profile，后续按阶段逐步替换旧业务。
