@@ -10,4 +10,3 @@
 - [招募 API 规范](docs/recruitment-api-spec.md)
 - [招募业务规则](docs/recruitment-decisions.md)
 - [完整 ER 与后续数据设计](docs/recruitment-er.md)
-- [李锐招募模块任务完成说明](李锐-招募模块任务完成说明.md)

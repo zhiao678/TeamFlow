@@ -166,7 +166,6 @@ Java 基础包为 `com.teamflow.backend`：
 - 新版接口规范：[recruitment-api-spec.md](../docs/recruitment-api-spec.md)
 - 新版业务规则：[recruitment-decisions.md](../docs/recruitment-decisions.md)
 - 新版 ER 设计：[recruitment-er.md](../docs/recruitment-er.md)
-- [李锐招募模块任务完成说明](../李锐-招募模块任务完成说明.md)
 - 旧项目/任务接口规范：[api-spec.md](../docs/api-spec.md)
 
 旧项目、任务代码和 `database/init.sql` 暂时保留，避免破坏已有演示与测试。新版功能使用 `teamflow_recruitment` 数据库和 `recruitment` Spring Profile，后续按阶段逐步替换旧业务。
