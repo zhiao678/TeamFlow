@@ -1,13 +1,14 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { sessionToken, setSessionToken } from '@/api/session'
-import { getCurrentUser, updateProfile, errorMessage } from '@/api/users'
+import { getCurrentUser, updateProfile, logout as logoutRequest, errorMessage } from '@/api/users'
 import type { AuthResult, UserProfile, ProfilePayload } from '@/types/user'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<UserProfile | null>(null)
   const error = ref('')
   const loading = ref(false)
+  const loggingOut = ref(false)
   let revision = 0
   let pending: Promise<void> | null = null
   function clear() {
@@ -58,5 +59,31 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = profile
     return true
   }
-  return { token: sessionToken, user, error, loading, clear, accept, restore, saveProfile }
+  async function logout() {
+    if (loggingOut.value) return false
+    loggingOut.value = true
+    const currentRevision = revision
+    const token = sessionToken.value
+    try {
+      await logoutRequest()
+    } catch {
+      /* 无状态 JWT：请求失败也结束本地会话。 */
+    } finally {
+      if (revision === currentRevision && sessionToken.value === token) clear()
+      loggingOut.value = false
+    }
+    return !sessionToken.value
+  }
+  return {
+    loggingOut,
+    logout,
+    token: sessionToken,
+    user,
+    error,
+    loading,
+    clear,
+    accept,
+    restore,
+    saveProfile,
+  }
 })

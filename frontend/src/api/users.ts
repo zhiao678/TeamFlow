@@ -21,6 +21,7 @@ export const login = (payload: Credentials) =>
   unwrap(request.post<Result<AuthResult>>('/auth/login', payload))
 export const register = (payload: RegisterPayload) =>
   unwrap(request.post<Result<AuthResult>>('/auth/register', payload))
+export const logout = () => unwrap(request.post<Result<null>>('/auth/logout'))
 export const getCurrentUser = () => unwrap(request.get<Result<UserProfile>>('/users/me'))
 export const updateProfile = (payload: ProfilePayload) =>
   unwrap(request.patch<Result<UserProfile>>('/users/me', payload))

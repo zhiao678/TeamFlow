@@ -6,6 +6,8 @@ export interface UserProfile {
   department: string | null
   grade: string | null
   bio: string | null
+  platformRole: 'USER' | 'ADMIN'
+  accountStatus: 'ACTIVE' | 'RESTRICTED' | 'DISABLED'
   skills: string[]
 }
 export interface Credentials {
@@ -20,6 +22,7 @@ export type ProfilePayload = Pick<UserProfile, 'displayName'> & {
   department: string
   grade: string
   bio: string
+  tagIds?: number[]
 }
 export interface AuthResult {
   token: string

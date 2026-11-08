@@ -6,9 +6,8 @@ defineEmits<{ toggle: [] }>()
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
-function logout() {
-  auth.clear()
-  void router.replace('/login')
+async function logout() {
+  if (await auth.logout()) await router.replace('/login')
 }
 </script>
 <template>
@@ -31,10 +30,10 @@ function logout() {
         ><RouterLink to="/profile" class="message-link"
           ><span class="avatar">{{ auth.user.displayName.slice(0, 1) || '用户' }}</span
           >{{ auth.user.displayName }}</RouterLink
-        ><el-button text @click="logout">退出登录</el-button></template
+        ><el-button text :loading="auth.loggingOut" @click="logout">退出登录</el-button></template
       ><template v-else-if="auth.token"
         ><span class="message-link">{{ auth.loading ? '正在验证身份…' : '身份待验证' }}</span
-        ><el-button text @click="logout">退出登录</el-button></template
+        ><el-button text :loading="auth.loggingOut" @click="logout">退出登录</el-button></template
       ><RouterLink v-else to="/login">登录</RouterLink>
     </div>
   </header>

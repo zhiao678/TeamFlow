@@ -8,7 +8,7 @@ export const request = axios.create({
 })
 
 request.interceptors.request.use((config) => {
-  if (sessionToken.value && !config.url?.startsWith('/auth/')) {
+  if (sessionToken.value && !['/auth/login', '/auth/register'].includes(config.url ?? '')) {
     config.headers.Authorization = `Bearer ${sessionToken.value}`
   }
   return config
