@@ -1,8 +1,8 @@
 # 大学生组队招募平台 API 规范
 
-本文档描述新版招募平台的第一批接口。它基于 `recruitment-decisions.md` 和 `recruitment-er.md`，用于前后端共同开发。
+本文档基于 `recruitment-decisions.md` 和 `recruitment-er.md`，用于前后端共同开发。
 
-当前只定义核心组队流程：用户、个人资料、招募、申请、成员和成队。聊天、通知、举报和社区接口在核心流程确认后继续补充。
+截至 2026-11-08，第 3 至 5 节的用户、资料和招募接口已实现。第 6 节是申请、成员和成队的后续接口约定，第 7 节列出尚待补充的接口。
 
 ## 1. 基础约定
 
@@ -240,7 +240,8 @@ CLOSED
 | `remainingSlots` | number | 否 | 剩余名额 |
 | `deadlineAt` | string | 是 | 截止时间 |
 | `status` | string | 否 | 招募状态 |
-| `tags` | array | 否 | 技能标签 |
+| `closeReason` | string | 是 | 关闭原因 |
+| `tags` | string[] | 否 | 技能标签名称，例如 `["Java", "Vue"]` |
 | `createdAt` | string | 否 | 创建时间 |
 | `updatedAt` | string | 否 | 更新时间 |
 
@@ -254,22 +255,26 @@ CLOSED
 GET /api/recruitments
 ```
 
-需要登录或允许游客访问，最终权限以团队决定为准。当前建议公开招募列表允许游客浏览。
+允许游客访问。默认只返回 `RECRUITING`。查询 `TEAMED` 或 `CLOSED` 返回对应公开招募，查询 `DRAFT` 只返回当前登录负责人的草稿，游客查询草稿得到空分页。登录不会向默认大厅混入本人的其他状态招募。
 
 查询参数：
 
 | 参数 | 类型 | 必填 | 说明 |
 |---|---|---|---|
-| `keyword` | string | 否 | 搜索标题、目的、课程、教师 |
-| `categoryId` | number | 否 | 分类筛选 |
-| `teacherName` | string | 否 | 教师名称模糊匹配 |
-| `courseName` | string | 否 | 课程名称模糊匹配 |
-| `tagIds` | string | 否 | 逗号分隔的技能标签 ID |
-| `minRemainingSlots` | number | 否 | 最少剩余名额 |
-| `status` | string | 否 | 默认 `RECRUITING` |
-| `page` | number | 否 | 默认 1 |
-| `pageSize` | number | 否 | 默认 20，最大 100 |
-| `sort` | string | 否 | `LATEST`、`DEADLINE`、`POPULAR` |
+| `keyword` | string | 否 | 最长 200 字符，搜索标题、目的、课程、教师的任一字段 |
+| `categoryId` | number | 否 | 正整数，分类 ID 精确匹配 |
+| `teacherName` | string | 否 | 最长 100 字符，教师名称包含匹配 |
+| `courseName` | string | 否 | 最长 100 字符，课程名称包含匹配 |
+| `status` | string | 否 | `DRAFT`、`RECRUITING`、`TEAMED`、`CLOSED`，默认 `RECRUITING` |
+| `page` | number | 否 | 从 1 开始，默认 1 |
+| `pageSize` | number | 否 | 1 至 100，默认 20 |
+| `sort` | string | 否 | `LATEST`、`DEADLINE`，默认 `LATEST` |
+
+筛选条件取交集。`keyword`、`courseName` 和 `teacherName` 去除首尾空格，空字符串等同未筛选，`%` 和 `_` 按普通字符匹配。`status` 和 `sort` 须严格使用表中的枚举值。分类不存在时返回空结果。非法分页、状态或排序参数返回 `40000`。
+
+`LATEST` 按创建时间降序、ID 降序排列。`DEADLINE` 按截止时间升序、ID 降序排列，没有截止时间的记录放在最后，已过期记录仍参与排序。截止时间不会自动将招募改为关闭。
+
+技能组合、最少剩余名额、`POPULAR` 和收藏列入 11 月 9 日至 15 日阶段，本周客户端只发送上表参数。
 
 响应使用分页结构：
 
@@ -292,7 +297,9 @@ GET /api/recruitments
 GET /api/recruitments/{id}
 ```
 
-返回招募完整信息、正式成员列表、申请权限和当前用户是否已收藏/申请/加入。
+允许游客访问，返回第 4 节的招募对象。草稿只允许负责人读取，游客和其他用户访问均返回 `40400`。不存在的招募也返回 `40400`。
+
+成员列表、申请权限和收藏/申请/加入标记随对应模块后续补充。
 
 ### 5.3 创建招募
 
@@ -310,11 +317,12 @@ Content-Type: application/json
   "courseName": "Java 程序设计",
   "teacherName": "张老师",
   "purpose": "完成课程汇报",
-  "description": "已有两名成员，希望寻找一名队友",
+  "description": "希望寻找两名队友",
   "requirements": "熟悉 Java 或者愿意负责材料整理",
   "maxMembers": 3,
   "deadlineAt": "2026-11-15T18:00:00",
-  "tagIds": [1, 2]
+  "tagIds": [1, 2],
+  "publish": true
 }
 ```
 
@@ -324,6 +332,12 @@ Content-Type: application/json
 - 创建时状态为 `DRAFT` 或直接为 `RECRUITING`，由前端操作决定。
 - 负责人自动成为第一名 `LEADER` 成员。
 - `maxMembers` 至少为 2，不能小于当前成员数。
+- `publish` 默认 `false`，保存为草稿，传 `true` 直接发布。
+- 标题最长 150、目的最长 200、课程和教师各最长 100 字符。
+- `description` 和 `requirements` 各最长 20000 个 UTF-16 代码单元，更新时使用相同限制。
+- `tagIds` 最多 20 个，使用启用的正整数标签 ID，重复 ID 去重保存。
+- 分类必须存在且启用，标签必须存在且启用。
+- 创建草稿也需要填写标题、分类、目的和人数上限。
 
 成功状态：`201 Created`。
 
@@ -334,7 +348,14 @@ PATCH /api/recruitments/{id}
 Content-Type: application/json
 ```
 
-只有负责人可以编辑。`TEAMED` 和 `CLOSED` 招募不能编辑核心内容；人数上限不能小于当前正式成员数。
+只有负责人可以编辑。请求字段与创建接口相同，但不接收 `publish`，所有字段均可选。
+
+- `DRAFT` 允许编辑全部业务字段，标题和目的不能改成空白。
+- `RECRUITING` 只接受 `description`、`requirements`、`tagIds`、`deadlineAt` 和 `maxMembers`。提交非空的标题、分类、课程、教师或目的字段返回 `40900`，即使字段值与当前值相同也应省略。
+- `TEAMED` 和 `CLOSED` 禁止编辑，返回 `40900`。
+- 人数上限不能低于当前 `ACTIVE` 成员数量。
+- 未传字段和 `null` 保持原值，`tagIds: []` 清空标签，空字符串可清空描述、要求、课程或教师，但课程和教师仅草稿可编辑。当前无法通过 `null` 清除截止时间。
+- 返回更新后的第 4 节招募对象。
 
 ### 5.5 发布招募
 
@@ -342,7 +363,7 @@ Content-Type: application/json
 POST /api/recruitments/{id}/publish
 ```
 
-只有负责人可以操作。草稿发布后进入 `RECRUITING`，发布前校验必填字段。
+只有负责人可以操作，必须处于 `DRAFT`。发布时重新校验非空白标题和目的、启用分类和标签、人数上限及当前成员数量，成功后进入 `RECRUITING`，返回招募对象。其他状态返回 `40900`。
 
 ### 5.6 关闭招募
 
@@ -351,7 +372,7 @@ POST /api/recruitments/{id}/close
 Content-Type: application/json
 ```
 
-只有负责人可以操作。可选请求体：
+只有负责人可以关闭 `RECRUITING` 招募。请求体可以省略，也可以传入关闭原因。
 
 ```json
 {
@@ -359,9 +380,50 @@ Content-Type: application/json
 }
 ```
 
-关闭后不再接受申请，状态变为 `CLOSED`。
+`reason` 最长 255 字符。关闭后状态变为 `CLOSED`，返回招募对象并保留成员和标签历史。`DRAFT`、`TEAMED`、`CLOSED` 均返回 `40900`。本周关闭操作只处理招募状态，申请失效和通知将在对应模块实现时纳入同一事务。
 
-## 6. 申请和成员
+### 5.7 删除草稿
+
+```http
+DELETE /api/recruitments/{id}
+Authorization: Bearer <token>
+```
+
+只有负责人可以删除 `DRAFT`。删除招募、标签关联和负责人成员记录在同一事务内完成。`RECRUITING`、`TEAMED`、`CLOSED` 返回 `40900`。成功返回 HTTP 200，响应为 `{"code":0,"message":"success","data":null}`。重复删除返回 `40400`。
+
+所有招募管理接口均从 JWT 获取当前身份，未登录返回 `40100`，其他用户操作已有招募返回 `40300`。管理操作先锁定招募行，再判断负责人、状态和人数。
+
+### 5.8 我的招募
+
+```http
+GET /api/recruitments/mine
+Authorization: Bearer <token>
+```
+
+需要登录。当前按 `ownerId` 返回本人负责的全部招募，包含四种状态，按创建时间降序、ID 降序排列。响应 `data` 是第 4 节对象的数组，无数据时为 `[]`。不接受大厅分页或筛选参数。当前尚无转交功能，创建者即负责人，后续转交时需按业务决策明确创建者和负责人的查询口径。
+
+### 5.9 分类与技能标签
+
+```http
+GET /api/categories
+GET /api/tags
+```
+
+允许游客访问，只返回已启用的条目，无数据时 `data` 为 `[]`。
+
+分类按 `sortOrder` 升序、ID 升序返回。
+
+```json
+{"code":0,"message":"success","data":[{"id":1,"name":"课堂组队","parentId":null,"sortOrder":1}]}
+```
+
+标签按名称升序、ID 升序返回。
+
+```json
+{"code":0,"message":"success","data":[{"id":1,"name":"Java"},{"id":2,"name":"Vue"}]}
+```
+
+## 6. 申请和成员（后续接口约定，尚未实现）
 
 申请状态：
 
