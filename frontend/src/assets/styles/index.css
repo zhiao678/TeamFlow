@@ -595,3 +595,75 @@ time {
     display: none;
   }
 }
+:root .auth-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+.auth-panel {
+  width: min(100%, 460px);
+  padding: 30px;
+}
+.profile-panel {
+  padding: 24px;
+}
+.auth-panel form,
+.profile-panel form {
+  max-width: 600px;
+  display: grid;
+  gap: 16px;
+  margin-top: 20px;
+}
+.auth-panel label,
+.profile-panel label {
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+}
+.auth-panel input,
+.profile-panel input,
+.profile-panel textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #cbd2de;
+  border-radius: 8px;
+  background: white;
+  color: #20304b;
+}
+.profile-panel textarea {
+  min-height: 100px;
+  font: inherit;
+}
+.form-error {
+  color: #bf303f;
+}
+.profile-panel fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+.profile-summary {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+.profile-summary .avatar {
+  height: 48px;
+  width: 48px;
+  font-size: 20px;
+}
+.session-feedback {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  padding: 16px;
+}
+.profile-panel fieldset:disabled {
+  opacity: 0.65;
+}

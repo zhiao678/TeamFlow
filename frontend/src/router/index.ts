@@ -1,17 +1,58 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
+    {
+      path: '/login',
+      component: () => import('@/views/auth/AuthView.vue'),
+      meta: { title: '登录' },
+    },
+    {
+      path: '/register',
+      component: () => import('@/views/auth/AuthView.vue'),
+      meta: { title: '注册' },
+    },
     {
       path: '/',
       component: () => import('@/layouts/MainLayout.vue'),
       redirect: '/dashboard',
       children: [
         {
+          path: 'recruitments',
+          name: 'recruitment-hall',
+          component: () => import('@/views/recruitment/RecruitmentHallView.vue'),
+          meta: { title: '招募大厅' },
+        },
+        {
+          path: 'recruitments/new',
+          name: 'recruitment-new',
+          component: () => import('@/views/recruitment/RecruitmentEditorView.vue'),
+          meta: { title: '发布招募', requiresAuth: true },
+        },
+        {
+          path: 'recruitments/:id/edit',
+          name: 'recruitment-edit',
+          component: () => import('@/views/recruitment/RecruitmentEditorView.vue'),
+          meta: { title: '编辑招募', requiresAuth: true },
+        },
+        {
+          path: 'recruitments/:id',
+          name: 'recruitment-detail',
+          component: () => import('@/views/recruitment/RecruitmentDetailView.vue'),
+          meta: { title: '招募详情' },
+        },
+        {
+          path: 'my-recruitments',
+          name: 'my-recruitments',
+          component: () => import('@/views/recruitment/MyRecruitmentsView.vue'),
+          meta: { title: '我的招募', requiresAuth: true },
+        },
+        {
           path: 'dashboard',
           component: () => import('@/views/dashboard/DashboardView.vue'),
-          meta: { title: '工作台' },
+          meta: { title: '工作台', requiresAuth: true },
         },
         {
           path: 'projects',
@@ -47,7 +88,12 @@ const router = createRouter({
         {
           path: 'tasks',
           component: () => import('@/views/task/MyTasksView.vue'),
-          meta: { title: '我的任务' },
+          meta: { title: '我的任务', requiresAuth: true },
+        },
+        {
+          path: 'profile',
+          component: () => import('@/views/profile/ProfileView.vue'),
+          meta: { title: '个人资料', requiresAuth: true },
         },
         {
           path: 'notifications',
@@ -63,6 +109,14 @@ const router = createRouter({
     },
   ],
   scrollBehavior: () => ({ top: 0 }),
+})
+
+router.beforeEach(async (to) => {
+  const auth = useAuthStore()
+  await auth.restore()
+  if (to.meta.requiresAuth && !auth.token) {
+    return { path: '/login', query: { redirect: to.fullPath } }
+  }
 })
 
 export default router
