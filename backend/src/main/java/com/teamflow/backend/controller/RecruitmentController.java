@@ -88,4 +88,21 @@ public class RecruitmentController {
         recruitmentService.deleteDraft(id);
         return Result.success();
     }
+
+    @PostMapping("/{id}/favorite")
+    public Result<Void> favorite(@PathVariable @Positive Long id) {
+        recruitmentService.favorite(id);
+        return Result.success();
+    }
+
+    @DeleteMapping("/{id}/favorite")
+    public Result<Void> unfavorite(@PathVariable @Positive Long id) {
+        recruitmentService.unfavorite(id);
+        return Result.success();
+    }
+
+    @GetMapping("/favorites")
+    public Result<List<RecruitmentVO>> favorites() {
+        return Result.success(recruitmentService.listMyFavorites());
+    }
 }

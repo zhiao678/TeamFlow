@@ -240,6 +240,7 @@ CLOSED
 | `remainingSlots` | number | 否 | 剩余名额 |
 | `deadlineAt` | string | 是 | 截止时间 |
 | `status` | string | 否 | 招募状态 |
+| `favorited` | boolean | 否 | 当前登录用户是否已收藏；游客恒为 `false` |
 | `closeReason` | string | 是 | 关闭原因 |
 | `tags` | string[] | 否 | 技能标签名称，例如 `["Java", "Vue"]` |
 | `createdAt` | string | 否 | 创建时间 |
@@ -265,16 +266,20 @@ GET /api/recruitments
 | `categoryId` | number | 否 | 正整数，分类 ID 精确匹配 |
 | `teacherName` | string | 否 | 最长 100 字符，教师名称包含匹配 |
 | `courseName` | string | 否 | 最长 100 字符，课程名称包含匹配 |
+| `tagIds` | string | 否 | 逗号分隔的技能标签 ID，按任一标签匹配 |
+| `minRemainingSlots` | number | 否 | 最少剩余名额 |
 | `status` | string | 否 | `DRAFT`、`RECRUITING`、`TEAMED`、`CLOSED`，默认 `RECRUITING` |
 | `page` | number | 否 | 从 1 开始，默认 1 |
 | `pageSize` | number | 否 | 1 至 100，默认 20 |
-| `sort` | string | 否 | `LATEST`、`DEADLINE`，默认 `LATEST` |
+| `sort` | string | 否 | `LATEST`、`DEADLINE`、`POPULAR`，默认 `LATEST` |
 
 筛选条件取交集。`keyword`、`courseName` 和 `teacherName` 去除首尾空格，空字符串等同未筛选，`%` 和 `_` 按普通字符匹配。`status` 和 `sort` 须严格使用表中的枚举值。分类不存在时返回空结果。非法分页、状态或排序参数返回 `40000`。
 
 `LATEST` 按创建时间降序、ID 降序排列。`DEADLINE` 按截止时间升序、ID 降序排列，没有截止时间的记录放在最后，已过期记录仍参与排序。截止时间不会自动将招募改为关闭。
 
-技能组合、最少剩余名额、`POPULAR` 和收藏列入 11 月 9 日至 15 日阶段，本周客户端只发送上表参数。
+`tagIds`、`minRemainingSlots` 和 `POPULAR` 用于招募发现增强。`POPULAR` 按收藏数、已接受申请数、创建时间和 ID 进行规则排序；没有行为数据时仍能正常返回结果。
+
+`tagIds` 使用逗号分隔，例如 `tagIds=1,2`，匹配任一标签。`minRemainingSlots` 为大于等于 0 的整数。
 
 响应使用分页结构：
 
@@ -423,6 +428,16 @@ GET /api/tags
 {"code":0,"message":"success","data":[{"id":1,"name":"Java"},{"id":2,"name":"Vue"}]}
 ```
 
+### 5.10 招募收藏
+
+```http
+POST   /api/recruitments/{id}/favorite
+DELETE /api/recruitments/{id}/favorite
+GET    /api/recruitments/favorites
+```
+
+上述接口均需要登录。收藏和取消收藏成功时返回统一空数据响应。重复收藏以及取消未收藏的招募均保持幂等。其他用户不能收藏草稿。`GET /api/recruitments/favorites` 按收藏时间倒序返回当前用户收藏的招募数组；无收藏时返回 `[]`。招募详情和大厅列表中的 `favorited` 表示当前用户收藏状态，游客恒为 `false`。
+
 ## 6. 申请和成员（后续接口约定，尚未实现）
 
 申请状态：
@@ -537,7 +552,61 @@ POST /api/recruitments/{id}/form-team
 - 创建唯一的队伍群聊。
 - 发送相关通知。
 
-## 7. 当前不在本文件中冻结的接口
+## 7. 通知接口
+
+申请模块通过后端 `NotificationService.create(...)` 创建通知，不由客户端直接创建。`eventKey` 对同一接收者唯一，用于防止事务重试产生重复通知。本阶段通知事件类型包括：
+
+```text
+APPLICATION_SUBMITTED
+APPLICATION_ACCEPTED
+APPLICATION_REJECTED
+APPLICATION_WITHDRAWN
+```
+
+对应的 `eventKey` 使用稳定的业务对象键，例如 `application:{applicationId}:accepted`。提交申请时通知招募负责人；接受、拒绝或撤回时通知申请者。申请与通知应在同一业务事务中写入。
+
+### 7.1 通知列表
+
+```http
+GET /api/notifications?page=1&pageSize=20&unreadOnly=false
+```
+
+需要登录。`page` 从 1 开始，默认 1；`pageSize` 默认 20，最大 100；`unreadOnly` 默认 `false`。`total` 是当前筛选条件下的记录数，`unreadCount` 是当前用户全部未读通知数。
+
+响应数据结构：
+
+```json
+{
+  "records": [
+    {
+      "id": 1,
+      "eventType": "APPLICATION_SUBMITTED",
+      "targetType": "APPLICATION",
+      "recruitmentId": null,
+      "applicationId": 12,
+      "title": "收到新的入队申请",
+      "content": "有学生申请加入你的招募",
+      "read": false,
+      "createdAt": "2026-11-11T10:30:00"
+    }
+  ],
+  "page": 1,
+  "pageSize": 20,
+  "total": 1,
+  "unreadCount": 1
+}
+```
+
+### 7.2 标记已读
+
+```http
+PATCH /api/notifications/{id}/read
+PATCH /api/notifications/read-all
+```
+
+需要登录，只能修改当前用户自己的通知。单条通知不存在或不属于当前用户时返回 `40400`；全部已读只影响当前用户。成功时返回统一空数据响应。
+
+## 8. 当前不在本文件中冻结的接口
 
 以下接口等核心招募流程确认后补充：
 
@@ -546,10 +615,6 @@ GET  /api/conversations
 POST /api/conversations/private
 GET  /api/conversations/{id}/messages
 POST /api/conversations/{id}/messages
-
-GET   /api/notifications
-PATCH /api/notifications/{id}/read
-PATCH /api/notifications/read-all
 
 POST  /api/reports
 GET   /api/admin/reports
