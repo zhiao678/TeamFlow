@@ -2,7 +2,7 @@
 
 本文档基于 `recruitment-decisions.md` 和 `recruitment-er.md`，用于前后端共同开发。
 
-截至 2026-11-08，第 3 至 5 节的用户、资料和招募接口已实现。第 6 节是申请、成员和成队的后续接口约定，第 7 节列出尚待补充的接口。
+截至 2026-11-12，第 3 至 7 节的用户、资料、招募、申请、成员、退出审核、负责人继任及通知接口已实现。第 6.7 节保留后续确认成队约定。
 
 ## 1. 基础约定
 
@@ -385,7 +385,7 @@ Content-Type: application/json
 }
 ```
 
-`reason` 最长 255 字符。关闭后状态变为 `CLOSED`，返回招募对象并保留成员和标签历史。`DRAFT`、`TEAMED`、`CLOSED` 均返回 `40900`。本周关闭操作只处理招募状态，申请失效和通知将在对应模块实现时纳入同一事务。
+`reason` 最长 255 字符。关闭后状态变为 `CLOSED`，返回招募对象并保留成员和标签历史。`DRAFT`、`TEAMED`、`CLOSED` 均返回 `40900`。关闭同时将该招募的 PENDING 入队申请置为 EXPIRED，向申请人发送 APPLICATION_EXPIRED 通知，整体在同一事务提交。
 
 ### 5.7 删除草稿
 
@@ -438,7 +438,11 @@ GET    /api/recruitments/favorites
 
 上述接口均需要登录。收藏和取消收藏成功时返回统一空数据响应。重复收藏以及取消未收藏的招募均保持幂等。其他用户不能收藏草稿。`GET /api/recruitments/favorites` 按收藏时间倒序返回当前用户收藏的招募数组；无收藏时返回 `[]`。招募详情和大厅列表中的 `favorited` 表示当前用户收藏状态，游客恒为 `false`。
 
-## 6. 申请和成员（后续接口约定，尚未实现）
+## 6. 申请、成员和退出审核
+
+本节写操作使用 JWT 当前身份。权限不足返回 `40300`，对象不存在返回 `40400`，重复待处理申请、终态操作、满员、截止等状态冲突返回 `40900`。写操作先锁招募行，再锁申请或转交记录，成员、状态和通知一起提交。
+
+申请响应对象包含 `id`、`recruitmentId`、`recruitmentTitle`、`applicantId`、`applicantDisplayName`、`introduction`、`skillsDescription`、`availableTime`、`status`、`rejectionReason`、`createdAt` 和 `processedAt`。列表返回该对象的数组，按创建时间降序、ID 降序排列，无数据时为 `[]`。
 
 申请状态：
 
@@ -478,8 +482,11 @@ Content-Type: application/json
 
 - 招募必须处于 `RECRUITING` 且未截止。
 - 当前用户不能是该招募的正式成员。
+- 负责人不能申请本人招募，招募必须有剩余名额。
 - 同一用户最多存在一条 `PENDING` 申请。
 - `PENDING` 申请不占用正式名额。
+- `introduction` 和 `skillsDescription` 各最多 1000 字符，`availableTime` 最多 255 字符，均可选。
+- 同一用户撤回或被拒后可重新提交，历史申请保留。其他用户的草稿返回 `40400`。
 
 成功状态：`201 Created`。
 
@@ -491,6 +498,14 @@ GET /api/recruitments/{id}/applications
 
 只有招募负责人可以查看全部申请。申请人只能查看自己的申请状态。
 
+申请人使用以下接口读取本人的全部历史申请。
+
+```http
+GET /api/applications/me
+```
+
+需要登录，返回申请数组。负责人查看招募申请列表也需要登录。
+
 ### 6.3 接受申请
 
 ```http
@@ -499,10 +514,13 @@ PATCH /api/applications/{id}/accept
 
 只有负责人可以操作。服务端必须在事务中重新检查招募状态、申请状态和剩余名额；接受最后一个名额时只能有一个请求成功。
 
+只有 RECRUITING 招募的 PENDING 申请可接受或拒绝。截止前已提交的申请在截止后仍可处理。重复处理返回 `40900`。成功返回更新后的申请对象。
+
 成功后：
 
 - 申请变为 `ACCEPTED`。
 - 创建 `team_member` 记录。
+- 已有 LEFT / REMOVED 历史关系时复用该记录，恢复 ACTIVE / MEMBER 并清除 leftAt。
 - 当前成员数加一。
 - 发送通知。
 
@@ -521,7 +539,7 @@ Content-Type: application/json
 }
 ```
 
-申请变为 `REJECTED`，并通知申请人。
+`reason` 可省略或为空，最多 255 字符。申请变为 `REJECTED`，保存为 `rejectionReason`，并通知申请人，返回更新后的申请对象。
 
 ### 6.5 撤回申请
 
@@ -529,7 +547,7 @@ Content-Type: application/json
 PATCH /api/applications/{id}/withdraw
 ```
 
-只有申请人可以撤回自己的 `PENDING` 申请。撤回后状态变为 `WITHDRAWN`，后续允许重新提交申请。
+只有申请人可以撤回自己的 `PENDING` 申请。撤回后状态变为 `WITHDRAWN`，通知当前招募负责人，返回更新后的申请对象，后续允许重新提交申请。
 
 ### 6.6 查询成员
 
@@ -537,9 +555,17 @@ PATCH /api/applications/{id}/withdraw
 GET /api/recruitments/{id}/members
 ```
 
-公开招募详情可以返回公开成员信息；完整成员管理信息仅对负责人和正式成员开放。
+允许游客查询公开招募的 ACTIVE 正式成员。草稿沿用详情可见性，其他用户访问返回 `40400`。返回数组，每项为 `{id, displayName, avatarUrl, role, joinedAt}`，其中 id 是用户 ID。负责人优先，其余按加入时间、用户 ID 升序排列。
 
-### 6.7 确认成队
+```http
+DELETE /api/recruitments/{id}/members/{userId}
+```
+
+只有当前负责人可移除其他 ACTIVE 成员。成功返回 HTTP 200 与统一空数据响应，关系更新为 REMOVED 并记录 leftAt，相关队伍群成员资格与待处理退出、继任记录同时失效。人数和剩余名额由 ACTIVE 成员实时计算。
+
+自行调用 DELETE 返回状态冲突，普通成员使用退出申请，负责人使用选定继任者流程。重复移除返回 `40900`。
+
+### 6.7 确认成队（后续接口约定）
 
 ```http
 POST /api/recruitments/{id}/form-team
@@ -552,6 +578,48 @@ POST /api/recruitments/{id}/form-team
 - 创建唯一的队伍群聊。
 - 发送相关通知。
 
+### 6.8 成员申请退出
+
+```http
+POST /api/recruitments/{id}/exit-requests
+GET  /api/recruitments/{id}/exit-requests
+GET  /api/member-exit-requests/me
+PATCH /api/member-exit-requests/{id}/approve
+PATCH /api/member-exit-requests/{id}/reject
+```
+
+所有接口需要登录。普通 ACTIVE 成员提交退出申请，可选请求体为 `{"reason":"时间安排变化"}`，原因最多 255 字符。POST 返回 HTTP 201 和申请对象，同一成员同一招募至多一条 PENDING 退出申请。负责人通过继任流程退出。
+
+招募退出申请列表仅当前负责人可读，我的退出申请列表仅返回本人记录。列表按创建时间和 ID 降序返回数组。
+
+退出申请对象包含 `id`、`recruitmentId`、`recruitmentTitle`、`userId`、`userDisplayName`、`status`、`reason`、`rejectionReason`、`createdAt`、`processedAt` 和 `handoverHint`。
+
+- 提交后保持 ACTIVE 和原人数，通知负责人 MEMBER_EXIT_REQUESTED。
+- 只有当前负责人可批准或拒绝 PENDING 申请，负责人不能审核自己的退出。
+- 批准后更新为 APPROVED，成员转 LEFT、记录 leftAt、撤销队伍群资格，并使涉及该成员的待确认继任记录失效，通知本人 MEMBER_EXIT_APPROVED。
+- 拒绝可选 `{"reason":"请先沟通分工"}`，最多 255 字符，状态转 REJECTED，成员保留资格，可重新申请，通知本人 MEMBER_EXIT_REJECTED。
+- 已非 ACTIVE 的待处理申请审核时返回 EXPIRED 对象并提交失效状态，避免旧申请影响重新入队后的资格。移除成员时也会使旧申请失效。
+- 成员已离队或申请已处理后重复操作返回 `40900`。成功审核返回最新申请对象。
+
+### 6.9 负责人选择继任者后退出
+
+```http
+POST /api/recruitments/{id}/leader-exit-requests
+GET /api/leader-transfers/me
+PATCH /api/leader-transfers/{id}/accept
+PATCH /api/leader-transfers/{id}/reject
+```
+
+需要登录。当前负责人提交 `{"successorId":2}`，指定本队其他 ACTIVE 普通成员。POST 返回 HTTP 201 的转交对象，同一招募至多一条 PENDING 转交。
+
+转交对象包含 `id`、`recruitmentId`、`recruitmentTitle`、`fromUserId`、`fromDisplayName`、`toUserId`、`toDisplayName`、`status`、`exitAfterTransfer`、`createdAt`、`processedAt` 和 `handoverHint`。我的转交返回本人作为发起人或接收人的记录数组。
+
+接收者确认前，原负责人保留负责人权限与成员资格。只有指定继任者可接受或拒绝。接受时重新检查双方身份和有效成员资格，在同一事务中降原负责人角色、提升继任者为 LEADER、修改 ownerId，再将原负责人置 LEFT 并撤销其群资格，最后记录 ACCEPTED 和通知。确认后人数减少一人。
+
+新退出流程写入 `exitAfterTransfer=true`。既有数据默认 false，确认这类记录时只完成负责人转交，原负责人作为普通成员留队。继任者的待处理普通退出申请在接受时失效。被移除或已退出的继任者不能接任，相关转交转 EXPIRED。拒绝转 REJECTED，原负责人继续留队并可重选。
+
+职责与工作内容交接通过 `handoverHint` 提供简短提示。转交记录处理后重复接受或拒绝返回 `40900`。
+
 ## 7. 通知接口
 
 申请模块通过后端 `NotificationService.create(...)` 创建通知，不由客户端直接创建。`eventKey` 对同一接收者唯一，用于防止事务重试产生重复通知。本阶段通知事件类型包括：
@@ -563,7 +631,9 @@ APPLICATION_REJECTED
 APPLICATION_WITHDRAWN
 ```
 
-对应的 `eventKey` 使用稳定的业务对象键，例如 `application:{applicationId}:accepted`。提交申请时通知招募负责人；接受、拒绝或撤回时通知申请者。申请与通知应在同一业务事务中写入。
+对应的 `eventKey` 使用稳定的业务对象键，例如 `application:{applicationId}:accepted`。提交和撤回申请通知当前招募负责人，接受和拒绝通知申请人。通知目标为 APPLICATION，仅填 applicationId，recruitmentId 为空。关闭造成的申请失效使用 APPLICATION_EXPIRED 和 `application:{id}:expired`。申请与通知在同一事务中写入。
+
+退出审核事件使用 MEMBER_EXIT_REQUESTED / APPROVED / REJECTED，目标为 RECRUITMENT，事件键为 `member-exit:{id}:requested|approved|rejected`。继任邀请、接受、拒绝使用 LEADER_TRANSFER_REQUESTED / ACCEPTED / REJECTED，目标为 LEADER_TRANSFER，仅填 leaderTransferId。过期时更新业务状态。NotificationService.create 保留原签名并提供支持转交 ID 的重载，通知去重继续由接收者和 eventKey 唯一键保证。
 
 ### 7.1 通知列表
 
@@ -584,6 +654,7 @@ GET /api/notifications?page=1&pageSize=20&unreadOnly=false
       "targetType": "APPLICATION",
       "recruitmentId": null,
       "applicationId": 12,
+      "leaderTransferId": null,
       "title": "收到新的入队申请",
       "content": "有学生申请加入你的招募",
       "read": false,
@@ -623,7 +694,7 @@ PATCH /api/admin/reports/{id}
 
 这些接口不能改变本文件中已确认的用户、招募、申请、成员和成队规则。
 
-## 8. 第一批实现顺序
+## 9. 第一批实现顺序
 
 1. 用户注册、登录和当前用户。
 2. 用户资料和技能标签。

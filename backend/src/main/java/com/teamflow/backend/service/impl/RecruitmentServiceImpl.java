@@ -7,17 +7,20 @@ import com.teamflow.backend.common.exception.ErrorCode;
 import com.teamflow.backend.dto.CreateRecruitmentRequest;
 import com.teamflow.backend.dto.RecruitmentQueryRequest;
 import com.teamflow.backend.dto.UpdateRecruitmentRequest;
+import com.teamflow.backend.entity.Application;
 import com.teamflow.backend.entity.Category;
 import com.teamflow.backend.entity.Recruitment;
 import com.teamflow.backend.entity.RecruitmentTag;
 import com.teamflow.backend.entity.Tag;
 import com.teamflow.backend.entity.TeamMember;
+import com.teamflow.backend.mapper.ApplicationMapper;
 import com.teamflow.backend.mapper.CategoryMapper;
 import com.teamflow.backend.mapper.RecruitmentMapper;
 import com.teamflow.backend.mapper.RecruitmentFavoriteMapper;
 import com.teamflow.backend.mapper.RecruitmentTagMapper;
 import com.teamflow.backend.mapper.TagMapper;
 import com.teamflow.backend.mapper.TeamMemberMapper;
+import com.teamflow.backend.service.NotificationService;
 import com.teamflow.backend.service.RecruitmentService;
 import com.teamflow.backend.vo.CategoryVO;
 import com.teamflow.backend.vo.RecruitmentPageVO;
@@ -38,6 +41,8 @@ public class RecruitmentServiceImpl implements RecruitmentService {
     private final CategoryMapper categoryMapper;
     private final TagMapper tagMapper;
     private final RecruitmentFavoriteMapper recruitmentFavoriteMapper;
+    private final ApplicationMapper applicationMapper;
+    private final NotificationService notificationService;
 
     public RecruitmentServiceImpl(
             RecruitmentMapper recruitmentMapper,
@@ -45,7 +50,9 @@ public class RecruitmentServiceImpl implements RecruitmentService {
             TeamMemberMapper teamMemberMapper,
             CategoryMapper categoryMapper,
             TagMapper tagMapper,
-            RecruitmentFavoriteMapper recruitmentFavoriteMapper
+            RecruitmentFavoriteMapper recruitmentFavoriteMapper,
+            ApplicationMapper applicationMapper,
+            NotificationService notificationService
     ) {
         this.recruitmentMapper = recruitmentMapper;
         this.recruitmentTagMapper = recruitmentTagMapper;
@@ -53,6 +60,8 @@ public class RecruitmentServiceImpl implements RecruitmentService {
         this.categoryMapper = categoryMapper;
         this.tagMapper = tagMapper;
         this.recruitmentFavoriteMapper = recruitmentFavoriteMapper;
+        this.applicationMapper = applicationMapper;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -212,6 +221,13 @@ public class RecruitmentServiceImpl implements RecruitmentService {
         recruitment.setCloseReason(reason);
         recruitment.setUpdatedAt(LocalDateTime.now());
         recruitmentMapper.updateById(recruitment);
+        for (Application application : applicationMapper.selectPendingForUpdate(id)) {
+            applicationMapper.process(application.getId(), "EXPIRED", null);
+            notificationService.create(application.getApplicantId(), recruitment.getOwnerId(),
+                    "APPLICATION_EXPIRED", "application:" + application.getId() + ":expired",
+                    "APPLICATION", null, application.getId(), "入队申请已失效",
+                    "招募「" + recruitment.getTitle() + "」已关闭，你的待处理申请已失效");
+        }
         return getRecruitment(id);
     }
 

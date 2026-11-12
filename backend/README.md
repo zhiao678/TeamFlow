@@ -34,9 +34,16 @@ cd backend
 SOURCE C:/path/to/TeamFlow/database/recruitment-init.sql;
 ```
 
-脚本会创建并使用 `teamflow_recruitment` 数据库，包含用户、资料、分类、标签、招募、申请、成员和后续数据基础共 18 张表及演示数据。后续表的完整字段、约束和事务设计见 ER 文档。
+脚本会创建并使用 `teamflow_recruitment` 数据库，包含用户、资料、分类、标签、招募、申请、成员、退出审核和后续数据基础共 19 张表及演示数据。完整字段、约束和事务设计见 ER 文档。
 
-脚本会删除并重建该数据库中的同名开发表，不得用于需要保留真实数据的环境。原项目的 `database/init.sql` 和 `teamflow` 数据库暂时保留，两套脚本互不覆盖。
+已有招募库本周使用增量升级脚本，在 MySQL 客户端先选择目标数据库再执行。
+
+```sql
+USE teamflow_recruitment;
+SOURCE C:/path/to/TeamFlow/database/migrations/20261112-application-member-exit.sql;
+```
+
+完整初始化脚本 `database/recruitment-init.sql` 会删除并重建数据库中的同名开发表，用于可重置开发库。上述增量脚本保留已有数据。原项目的 `database/init.sql` 使用 `teamflow` 数据库。
 
 ## 启动新版招募平台后端
 
@@ -128,6 +135,20 @@ Authorization: Bearer <token>
 
 大厅返回 `data.records/page/pageSize/total`，我的招募返回数组。所有管理操作均检查 JWT 和负责人权限。参数与返回示例见招募 API 规范。
 
+## 申请与成员
+
+支持入队申请提交、招募负责人查询、我的申请、撤回、接受和拒绝，以及正式成员查询和负责人移除。申请使用 JWT 身份，待处理申请不占名额，接受时锁定招募并再次核对状态与剩余人数，业务数据和通知共同提交。
+
+普通成员退出需要提交申请并由负责人审核，批准前保持正式成员资格。负责人退出先选定本队普通成员，由继任者确认后原子转交并离队，交接通过简短提示沟通。列表、审批及转交接口见 API 规范第 6 节。
+
+### 本周验证与联调
+
+2026-11-12 本地完整验证版本共 89 项测试通过，失败、错误和跳过均为 0。新增测试覆盖申请权限、重复申请、截止和满员、最后名额并发、成员退出审核、继任确认、通知幂等与通知失败时的整体回滚。历史普通负责人转交记录也已验证，确认后原负责人继续作为普通成员留队。本次提交的验证范围和前端待联调事项见交接说明。
+
+真实 MySQL 8.0.18 验证通过。最后名额、重复批准退出、重复确认继任的并发请求均仅一次成功。完整初始化生成 19 张表，从上一版结构执行增量升级两次后保留原有用户、招募和成员数据。
+
+前端需接入入队申请、负责人审核、退出申请及继任确认页面，核对新增通知目标 leaderTransferId 与 handoverHint 提示。我的招募沿用现任负责人查询口径，独立的创建历史展示待小组确认。
+
 ## 统一响应
 
 成功响应：
@@ -171,6 +192,7 @@ Java 基础包为 `com.teamflow.backend`：
 - 新版接口规范：[recruitment-api-spec.md](../docs/recruitment-api-spec.md)
 - 新版业务规则：[recruitment-decisions.md](../docs/recruitment-decisions.md)
 - 新版 ER 设计：[recruitment-er.md](../docs/recruitment-er.md)
+- [申请与成员模块交接说明](../docs/handoff-20261112-applications-members.md)
 - 旧项目/任务接口规范：[api-spec.md](../docs/api-spec.md)
 
 旧项目、任务代码和 `database/init.sql` 暂时保留，避免破坏已有演示与测试。新版功能使用 `teamflow_recruitment` 数据库和 `recruitment` Spring Profile，后续按阶段逐步替换旧业务。

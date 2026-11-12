@@ -1,6 +1,6 @@
 # 招募平台 ER 设计
 
-本文与 `database/recruitment-init.sql` 对齐。申请、成员管理、收藏、转交、聊天、通知、屏蔽和举报属于后续数据基础，建表不代表对应接口已经实现。SQL 要求 MySQL 8.0.16 及以上版本，并会重建 `teamflow_recruitment` 中的表。已有库应通过独立迁移升级。
+本文与 `database/recruitment-init.sql` 对齐，共 19 张表。申请、成员管理、收藏、退出审核、负责人退出继任和通知已接入，聊天、屏蔽、举报按后续阶段推进。SQL 要求 MySQL 8.0.16 及以上版本，并会重建 `teamflow_recruitment` 中的表。已有库使用 `database/migrations/20261112-application-member-exit.sql` 增量升级。
 
 ## 1. 完整实体关系
 
@@ -97,6 +97,7 @@ erDiagram
         datetime created_at
         datetime processed_at
         bigint pending_applicant_id "generated"
+        varchar rejection_reason
     }
 
     TEAM_MEMBER {
@@ -114,6 +115,19 @@ erDiagram
     RECRUITMENT ||--o{ LEADER_TRANSFER : records
     TEAM_MEMBER ||--o{ LEADER_TRANSFER : from_member
     TEAM_MEMBER ||--o{ LEADER_TRANSFER : to_member
+    TEAM_MEMBER ||--o{ MEMBER_EXIT_REQUEST : requests_exit
+
+    MEMBER_EXIT_REQUEST {
+        bigint id PK
+        bigint recruitment_id FK
+        bigint user_id FK
+        varchar status
+        varchar reason
+        varchar rejection_reason
+        datetime created_at
+        datetime processed_at
+        bigint pending_user_id "generated"
+    }
     RECRUITMENT o|--o| CONVERSATION : team_chat
     USER o|--o{ CONVERSATION : direct_low
     USER o|--o{ CONVERSATION : direct_high
@@ -148,6 +162,7 @@ erDiagram
         bigint recruitment_id FK
         bigint from_user_id FK
         bigint to_user_id FK
+        boolean exit_after_transfer
         varchar status
         datetime created_at
         datetime processed_at
@@ -457,9 +472,9 @@ erDiagram
 | 提交申请 | 锁招募，确认 RECRUITING、未截止、有名额、非当前成员，再写 PENDING。唯一键兜底重复提交，待处理申请不占名额 |
 | 接受申请 | 所有名额和成员变更统一先锁同一招募行，再校验申请状态、人数和已有关系，更新申请、成员与通知。争抢最后一个名额仅一个事务成功 |
 | 确认成队 | 锁招募并校验负责人，只允许 RECRUITING → TEAMED，创建唯一 TEAM 会话及全部 ACTIVE 成员关系，PENDING 申请变 EXPIRED 并通知。整体提交，重试读取已有群 |
-| 关闭招募 | 仅 RECRUITING → CLOSED。申请和转交上线后，同事务使待处理申请与待确认转交失效并通知。当前阶段只实现已有招募管理 |
+| 关闭招募 | 仅 RECRUITING → CLOSED，同事务使 PENDING 入队申请 EXPIRED 并通知申请人。当前成员关系保留，退出审核和继任流程可继续 |
 | 负责人转交 | 锁招募，再校验 PENDING 转交和接收人在队状态。接受时先将原 LEADER 改为 MEMBER，再提升接收人为 LEADER，同时更新 owner_id、转交与通知。原子提交避免中间状态外泄 |
-| 退出或移除成员 | 锁招募，校验权限及成员状态，同时更新 team_member、conversation_member、待处理转交和通知。负责人须先转交，招募中也可先关闭再结束成员关系 |
+| 退出或移除成员 | 普通成员提交退出申请后保持 ACTIVE，负责人批准后更新为 LEFT。负责人可移除其他成员为 REMOVED，两者均锁招募并撤销群资格、失效待处理关联。负责人退出由继任者确认后原子转交并离队 |
 | 创建私聊 | 规范化用户对并检查联系与屏蔽条件，会话和两条成员关系同事务创建。唯一冲突读取已有会话，不能只创建部分成员 |
 | 发送消息与屏蔽 | 私聊先按用户 ID 升序锁两名用户，发送和屏蔽用同顺序，解决屏蔽关系尚不存在时的竞态。随后锁会话，校验 ACTIVE 成员、会话可写及双向屏蔽，再按幂等键写消息 |
 | 已读与游标 | 发送持有会话行锁至提交，保证同会话消息 ID 提交顺序。已读也检查成员并锁会话，只允许位置前进，禁止指向其他会话或越过未提交消息 |
@@ -469,4 +484,16 @@ erDiagram
 
 多资源操作统一锁顺序，先按用户 ID 升序，再锁招募、会话及其子记录。申请和成员功能必须遵守同一招募锁约定。唯一键约束业务唯一性，服务端事务负责权限、状态、人数与跨表集合规则。死锁采用有限重试并重新检查状态，不允许部分提交。
 
-当前 owner_id 同时承担创建时负责人和当前负责人的含义。“我的招募”当前按 owner_id 查询，转交上线前需确定创建历史是否独立展示，必要时增加 creator_id 并迁移历史数据。
+当前 owner_id 表示现任负责人，“我的招募”按 owner_id 查询。转交后新负责人可在我的招募管理该招募，原负责人通过转交记录查看历史。独立的创建历史展示口径待小组确认。
+
+## 8. 本周退出审批与升级
+
+`member_exit_request` 保存退出审核历史。id 为自增 BIGINT UNSIGNED 主键，recruitment_id 和 user_id 为非空 BIGINT UNSIGNED，并以复合外键关联 team_member。status 为 VARCHAR(20)，默认 PENDING，枚举为 PENDING / APPROVED / REJECTED / EXPIRED。reason 与 rejection_reason 为可空 VARCHAR(255)。created_at 默认为当前时间，processed_at 在待处理时为空、终态时必填。
+
+生成列 pending_user_id 仅在 PENDING 时等于 user_id，与 recruitment_id 组合唯一。基础索引覆盖招募状态和时间、用户与时间。同一招募同一成员可保留多条已处理记录。
+
+`application.rejection_reason` 新增为可空 VARCHAR(255)。`leader_transfer.exit_after_transfer` 为非空 TINYINT UNSIGNED，默认 0 且 CHECK 限定为 0 或 1。新负责人退出请求写入 1，历史普通转交数据保留默认 0。
+
+通知枚举补充 MEMBER_EXIT_REQUESTED、MEMBER_EXIT_APPROVED、MEMBER_EXIT_REJECTED。四类入队申请通知目标固定 APPLICATION，退出审核目标 RECRUITMENT，继任通知目标 LEADER_TRANSFER。
+
+已有数据库使用 `database/migrations/20261112-application-member-exit.sql`，先选择目标数据库再执行。脚本可重复执行，保留已有业务数据。初始化脚本用于新建开发库。按申请、退出申请或转交 ID 路由的写事务采用 READ_COMMITTED，先锁招募再读最新成员和待处理记录，防止等待锁后使用旧快照判断人数或负责人。

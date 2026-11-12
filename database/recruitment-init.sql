@@ -20,6 +20,7 @@ DROP TABLE IF EXISTS `message`;
 DROP TABLE IF EXISTS `conversation_member`;
 DROP TABLE IF EXISTS `conversation`;
 DROP TABLE IF EXISTS `leader_transfer`;
+DROP TABLE IF EXISTS `member_exit_request`;
 DROP TABLE IF EXISTS `recruitment_favorite`;
 DROP TABLE IF EXISTS `team_member`;
 DROP TABLE IF EXISTS `application`;
@@ -144,6 +145,7 @@ CREATE TABLE `application` (
     `skills_description` VARCHAR(1000) NULL,
     `available_time` VARCHAR(255) NULL,
     `status` VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    `rejection_reason` VARCHAR(255) NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `processed_at` DATETIME NULL,
     `pending_applicant_id` BIGINT UNSIGNED GENERATED ALWAYS AS
@@ -181,7 +183,30 @@ CREATE TABLE `team_member` (
         ON UPDATE RESTRICT ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- P0 data foundation. These tables do not imply that their APIs are implemented.
+CREATE TABLE `member_exit_request` (
+    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `recruitment_id` BIGINT UNSIGNED NOT NULL,
+    `user_id` BIGINT UNSIGNED NOT NULL,
+    `status` VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    `reason` VARCHAR(255) NULL,
+    `rejection_reason` VARCHAR(255) NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `processed_at` DATETIME NULL,
+    `pending_user_id` BIGINT UNSIGNED GENERATED ALWAYS AS
+        (CASE WHEN `status` = 'PENDING' THEN `user_id` ELSE NULL END) STORED,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_member_exit_pending` (`recruitment_id`, `pending_user_id`),
+    KEY `idx_member_exit_recruitment_status` (`recruitment_id`, `status`, `created_at`, `id`),
+    KEY `idx_member_exit_user_created` (`user_id`, `created_at`, `id`),
+    CONSTRAINT `chk_member_exit_status` CHECK (`status` IN ('PENDING', 'APPROVED', 'REJECTED', 'EXPIRED')),
+    CONSTRAINT `chk_member_exit_processed` CHECK (
+        (`status` = 'PENDING' AND `processed_at` IS NULL) OR
+        (`status` <> 'PENDING' AND `processed_at` IS NOT NULL)),
+    CONSTRAINT `fk_member_exit_member` FOREIGN KEY (`recruitment_id`, `user_id`)
+        REFERENCES `team_member` (`recruitment_id`, `user_id`) ON UPDATE RESTRICT ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Additional platform data tables.
 CREATE TABLE `recruitment_favorite` (
     `user_id` BIGINT UNSIGNED NOT NULL,
     `recruitment_id` BIGINT UNSIGNED NOT NULL,
@@ -200,6 +225,7 @@ CREATE TABLE `leader_transfer` (
     `recruitment_id` BIGINT UNSIGNED NOT NULL,
     `from_user_id` BIGINT UNSIGNED NOT NULL,
     `to_user_id` BIGINT UNSIGNED NOT NULL,
+    `exit_after_transfer` TINYINT UNSIGNED NOT NULL DEFAULT 0,
     `status` VARCHAR(20) NOT NULL DEFAULT 'PENDING',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `processed_at` DATETIME NULL,
@@ -210,6 +236,7 @@ CREATE TABLE `leader_transfer` (
     KEY `idx_transfer_rec_created` (`recruitment_id`, `created_at`, `id`),
     KEY `idx_transfer_recipient_status` (`to_user_id`, `status`, `created_at`),
     CONSTRAINT `chk_transfer_users` CHECK (`from_user_id` <> `to_user_id`),
+    CONSTRAINT `chk_transfer_exit` CHECK (`exit_after_transfer` IN (0, 1)),
     CONSTRAINT `chk_transfer_status` CHECK (`status` IN ('PENDING', 'ACCEPTED', 'REJECTED', 'CANCELLED', 'EXPIRED')),
     CONSTRAINT `chk_transfer_processed` CHECK (
         (`status` = 'PENDING' AND `processed_at` IS NULL) OR
@@ -387,6 +414,7 @@ CREATE TABLE `notification` (
     CONSTRAINT `chk_notification_event_type` CHECK (`event_type` IN
         ('APPLICATION_SUBMITTED', 'APPLICATION_ACCEPTED', 'APPLICATION_REJECTED', 'APPLICATION_WITHDRAWN', 'APPLICATION_EXPIRED',
          'RECRUITMENT_TEAMED', 'RECRUITMENT_CLOSED', 'MEMBER_JOINED', 'MEMBER_LEFT', 'MEMBER_REMOVED',
+         'MEMBER_EXIT_REQUESTED', 'MEMBER_EXIT_APPROVED', 'MEMBER_EXIT_REJECTED',
          'LEADER_TRANSFER_REQUESTED', 'LEADER_TRANSFER_ACCEPTED', 'LEADER_TRANSFER_REJECTED', 'LEADER_TRANSFER_CANCELLED', 'LEADER_TRANSFER_EXPIRED',
          'REPORT_RESOLVED', 'REPORT_DISMISSED')),
     CONSTRAINT `chk_notification_target_type` CHECK (`target_type` IN ('RECRUITMENT', 'APPLICATION', 'LEADER_TRANSFER', 'REPORT')),

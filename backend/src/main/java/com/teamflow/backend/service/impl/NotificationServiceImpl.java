@@ -55,6 +55,15 @@ public class NotificationServiceImpl implements NotificationService {
     public void create(Long recipientId, Long actorId, String eventType, String eventKey,
                        String targetType, Long recruitmentId, Long applicationId,
                        String title, String content) {
+        create(recipientId, actorId, eventType, eventKey, targetType,
+                recruitmentId, applicationId, null, title, content);
+    }
+
+    @Override
+    @Transactional
+    public void create(Long recipientId, Long actorId, String eventType, String eventKey,
+                       String targetType, Long recruitmentId, Long applicationId, Long leaderTransferId,
+                       String title, String content) {
         Notification notification = new Notification();
         notification.setRecipientId(recipientId);
         notification.setActorId(actorId);
@@ -63,6 +72,7 @@ public class NotificationServiceImpl implements NotificationService {
         notification.setTargetType(targetType);
         notification.setRecruitmentId(recruitmentId);
         notification.setApplicationId(applicationId);
+        notification.setLeaderTransferId(leaderTransferId);
         notification.setTitle(title);
         notification.setContent(content);
         notificationMapper.insertIfAbsent(notification);
@@ -70,7 +80,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     private NotificationVO toView(Notification item) {
         return new NotificationVO(item.getId(), item.getEventType(), item.getTargetType(),
-                item.getRecruitmentId(), item.getApplicationId(), item.getTitle(), item.getContent(),
+                item.getRecruitmentId(), item.getApplicationId(), item.getLeaderTransferId(), item.getTitle(), item.getContent(),
                 item.getReadAt() != null, item.getCreatedAt());
     }
 }
