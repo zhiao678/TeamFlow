@@ -10,4 +10,4 @@
 - [招募 API 规范](docs/recruitment-api-spec.md)
 - [招募业务规则](docs/recruitment-decisions.md)
 - [完整 ER 与后续数据设计](docs/recruitment-er.md)
-- [申请与成员模块交接说明](docs/handoff-20261112-applications-members.md)
+
