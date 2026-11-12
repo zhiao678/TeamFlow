@@ -9,4 +9,7 @@ public interface NotificationService {
     void create(Long recipientId, Long actorId, String eventType, String eventKey,
                 String targetType, Long recruitmentId, Long applicationId,
                 String title, String content);
+    void create(Long recipientId, Long actorId, String eventType, String eventKey,
+                String targetType, Long recruitmentId, Long applicationId, Long leaderTransferId,
+                String title, String content);
 }

@@ -8,6 +8,7 @@ public record NotificationVO(
         String targetType,
         Long recruitmentId,
         Long applicationId,
+        Long leaderTransferId,
         String title,
         String content,
         boolean read,
