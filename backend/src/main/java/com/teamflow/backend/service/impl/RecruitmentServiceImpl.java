@@ -14,6 +14,7 @@ import com.teamflow.backend.entity.Tag;
 import com.teamflow.backend.entity.TeamMember;
 import com.teamflow.backend.mapper.CategoryMapper;
 import com.teamflow.backend.mapper.RecruitmentMapper;
+import com.teamflow.backend.mapper.RecruitmentFavoriteMapper;
 import com.teamflow.backend.mapper.RecruitmentTagMapper;
 import com.teamflow.backend.mapper.TagMapper;
 import com.teamflow.backend.mapper.TeamMemberMapper;
@@ -36,19 +37,22 @@ public class RecruitmentServiceImpl implements RecruitmentService {
     private final TeamMemberMapper teamMemberMapper;
     private final CategoryMapper categoryMapper;
     private final TagMapper tagMapper;
+    private final RecruitmentFavoriteMapper recruitmentFavoriteMapper;
 
     public RecruitmentServiceImpl(
             RecruitmentMapper recruitmentMapper,
             RecruitmentTagMapper recruitmentTagMapper,
             TeamMemberMapper teamMemberMapper,
             CategoryMapper categoryMapper,
-            TagMapper tagMapper
+            TagMapper tagMapper,
+            RecruitmentFavoriteMapper recruitmentFavoriteMapper
     ) {
         this.recruitmentMapper = recruitmentMapper;
         this.recruitmentTagMapper = recruitmentTagMapper;
         this.teamMemberMapper = teamMemberMapper;
         this.categoryMapper = categoryMapper;
         this.tagMapper = tagMapper;
+        this.recruitmentFavoriteMapper = recruitmentFavoriteMapper;
     }
 
     @Override
@@ -59,6 +63,7 @@ public class RecruitmentServiceImpl implements RecruitmentService {
         long offset = ((long) request.page() - 1) * request.pageSize();
         List<RecruitmentVO> records = recruitmentMapper.selectPage(request, userId, offset).stream()
                 .map(this::fillTags)
+                .map(this::fillFavorite)
                 .toList();
         return new RecruitmentPageVO(records, request.page(), request.pageSize(), total);
     }
@@ -97,7 +102,9 @@ public class RecruitmentServiceImpl implements RecruitmentService {
                 && !recruitment.getOwnerId().equals(CurrentUserContext.get())) {
             throw new BusinessException(ErrorCode.DATA_NOT_FOUND, "recruitment not found");
         }
-        return fillTags(recruitment);
+        fillTags(recruitment);
+        fillFavorite(recruitment);
+        return recruitment;
     }
 
     @Override
@@ -218,6 +225,46 @@ public class RecruitmentServiceImpl implements RecruitmentService {
         recruitmentTagMapper.deleteByRecruitmentId(id);
         teamMemberMapper.delete(Wrappers.<TeamMember>lambdaQuery().eq(TeamMember::getRecruitmentId, id));
         recruitmentMapper.deleteById(id);
+    }
+
+    @Override
+    @Transactional
+    public void favorite(Long id) {
+        Long userId = CurrentUserContext.require();
+        Recruitment recruitment = recruitmentMapper.selectById(id);
+        if (recruitment == null) throw new BusinessException(ErrorCode.DATA_NOT_FOUND, "recruitment not found");
+        if ("DRAFT".equals(recruitment.getStatus())) {
+            throw new BusinessException(ErrorCode.DATA_NOT_FOUND, "recruitment not found");
+        }
+        recruitmentFavoriteMapper.insertFavoriteIfAbsent(userId, id);
+    }
+
+    @Override
+    @Transactional
+    public void unfavorite(Long id) {
+        recruitmentFavoriteMapper.deleteFavorite(CurrentUserContext.require(), id);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<RecruitmentVO> listMyFavorites() {
+        Long userId = CurrentUserContext.require();
+        return recruitmentFavoriteMapper.selectRecruitmentIds(userId).stream()
+                .map(recruitmentMapper::selectDetail)
+                .filter(java.util.Objects::nonNull)
+                .filter(item -> !"DRAFT".equals(item.getStatus()) || userId.equals(item.getOwnerId()))
+                .map(this::fillTags)
+                .map(item -> {
+                    item.setFavorited(true);
+                    return item;
+                })
+                .toList();
+    }
+
+    private RecruitmentVO fillFavorite(RecruitmentVO recruitment) {
+        Long userId = CurrentUserContext.get();
+        recruitment.setFavorited(userId != null && recruitmentFavoriteMapper.exists(userId, recruitment.getId()));
+        return recruitment;
     }
 
     private Recruitment requireOwnedRecruitment(Long id) {

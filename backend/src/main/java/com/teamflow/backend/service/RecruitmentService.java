@@ -21,4 +21,7 @@ public interface RecruitmentService {
     RecruitmentVO publishRecruitment(Long id);
     RecruitmentVO closeRecruitment(Long id, String reason);
     void deleteDraft(Long id);
+    void favorite(Long id);
+    void unfavorite(Long id);
+    List<RecruitmentVO> listMyFavorites();
 }

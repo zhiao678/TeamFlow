@@ -111,15 +111,20 @@ Authorization: Bearer <token>
 
 | 方法 | 路径 | 用途 |
 |---|---|---|
-| `GET` | `/api/recruitments` | 分页、关键词、分类、课程、教师、状态、最新或截止时间排序 |
+| `GET` | `/api/recruitments` | 分页、关键词、分类、课程、教师、技能、缺额筛选及最新、截止、热门排序 |
 | `GET` | `/api/recruitments/{id}` | 详情，草稿仅负责人可读 |
 | `GET` | `/api/recruitments/mine` | 当前负责人全部状态招募 |
+| `GET` | `/api/recruitments/favorites` | 当前用户收藏的招募 |
 | `POST` | `/api/recruitments` | 创建草稿或直接发布 |
 | `PATCH` | `/api/recruitments/{id}` | 按状态编辑允许字段 |
 | `POST` | `/api/recruitments/{id}/publish` | 发布草稿 |
 | `POST` | `/api/recruitments/{id}/close` | 关闭招募中记录 |
 | `DELETE` | `/api/recruitments/{id}` | 删除草稿 |
+| `POST/DELETE` | `/api/recruitments/{id}/favorite` | 收藏或取消收藏 |
 | `GET` | `/api/categories`、`/api/tags` | 查询启用分类和技能标签 |
+| `GET` | `/api/notifications` | 分页查询当前用户通知和未读数 |
+| `PATCH` | `/api/notifications/{id}/read` | 标记单条通知已读 |
+| `PATCH` | `/api/notifications/read-all` | 标记全部通知已读 |
 
 大厅返回 `data.records/page/pageSize/total`，我的招募返回数组。所有管理操作均检查 JWT 和负责人权限。参数与返回示例见招募 API 规范。
 

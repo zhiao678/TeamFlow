@@ -49,10 +49,32 @@ public interface RecruitmentMapper extends BaseMapper<Recruitment> {
             <if test="query.teacherName != null and query.teacherName != ''">
                 AND LOCATE(#{query.teacherName}, r.teacher_name) &gt; 0
             </if>
+            <if test="query.tagIds != null and query.tagIds.size() > 0">
+                AND EXISTS (
+                    SELECT 1 FROM recruitment_tag filter_rt
+                    WHERE filter_rt.recruitment_id = r.id
+                      AND filter_rt.tag_id IN
+                      <foreach collection="query.tagIds" item="tagId" open="(" separator="," close=")">
+                          #{tagId}
+                      </foreach>
+                )
+            </if>
+            <if test="query.minRemainingSlots != null">
+                AND r.max_members - (SELECT COUNT(*) FROM team_member tm_filter
+                    WHERE tm_filter.recruitment_id = r.id AND tm_filter.status = 'ACTIVE')
+                    &gt;= #{query.minRemainingSlots}
+            </if>
             """;
 
     @Select("<script>" + DETAIL_COLUMNS + DETAIL_FROM + QUERY_FILTERS + """
             <choose>
+                <when test="query.sort == 'POPULAR'">
+                    ORDER BY (SELECT COUNT(*) FROM recruitment_favorite rf
+                              WHERE rf.recruitment_id = r.id) DESC,
+                             (SELECT COUNT(*) FROM application app
+                              WHERE app.recruitment_id = r.id AND app.status = 'ACCEPTED') DESC,
+                             r.created_at DESC, r.id DESC
+                </when>
                 <when test="query.sort == 'DEADLINE'">
                     ORDER BY CASE WHEN r.deadline_at IS NULL THEN 1 ELSE 0 END,
                              r.deadline_at ASC, r.id DESC

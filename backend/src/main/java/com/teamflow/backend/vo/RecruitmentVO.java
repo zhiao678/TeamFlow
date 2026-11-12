@@ -21,6 +21,7 @@ public class RecruitmentVO {
     private LocalDateTime deadlineAt;
     private String status;
     private String closeReason;
+    private Boolean favorited;
     private List<String> tags;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -59,6 +60,8 @@ public class RecruitmentVO {
     public void setStatus(String status) { this.status = status; }
     public String getCloseReason() { return closeReason; }
     public void setCloseReason(String closeReason) { this.closeReason = closeReason; }
+    public Boolean getFavorited() { return favorited; }
+    public void setFavorited(Boolean favorited) { this.favorited = favorited; }
     public List<String> getTags() { return tags; }
     public void setTags(List<String> tags) { this.tags = tags; }
     public LocalDateTime getCreatedAt() { return createdAt; }
