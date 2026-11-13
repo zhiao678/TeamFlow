@@ -97,8 +97,9 @@ const router = createRouter({
         },
         {
           path: 'notifications',
+          name: 'notifications',
           component: () => import('@/views/notification/NotificationView.vue'),
-          meta: { title: '消息' },
+          meta: { title: '通知', requiresAuth: true },
         },
         {
           path: ':pathMatch(.*)*',

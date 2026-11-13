@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { useNotificationsStore } from '@/stores/notifications'
 import { useWorkspace } from '@/composables/useWorkspace'
 const auth = useAuthStore()
+const notifications = useNotificationsStore()
 const { projects, tasks, loading, error, load, projectName } = useWorkspace()
 const pending = computed(() => tasks.value.filter((task) => task.status !== 'DONE'))
 const stats = computed(() => [
@@ -40,8 +42,8 @@ const stats = computed(() => [
       >
       <div class="stat-card">
         <div class="stat-top">未读消息</div>
-        <strong>—</strong>
-        <p>消息接口暂未开放</p>
+        <strong>{{ notifications.unreadCount ?? '—' }}</strong>
+        <RouterLink to="/notifications">查看通知 →</RouterLink>
       </div>
     </section>
     <div class="dashboard-grid">
@@ -61,8 +63,11 @@ const stats = computed(() => [
         </article>
       </section>
       <section class="panel">
-        <div class="panel-heading"><h2>最新消息</h2></div>
-        <el-empty description="消息接口暂未开放" />
+        <div class="panel-heading"><h2>站内通知</h2></div>
+        <div class="profile-panel">
+          <p>申请动态与审核结果可在通知中心查看。</p>
+          <RouterLink to="/notifications">进入通知中心 →</RouterLink>
+        </div>
       </section>
       <section class="panel projects-panel">
         <div class="panel-heading">
