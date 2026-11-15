@@ -50,6 +50,12 @@ const router = createRouter({
           meta: { title: '我的招募', requiresAuth: true },
         },
         {
+          path: 'my-recruitments/:id/applications',
+          name: 'application-review',
+          component: () => import('@/views/recruitment/ApplicationReviewView.vue'),
+          meta: { title: '申请管理', requiresAuth: true },
+        },
+        {
           path: 'dashboard',
           component: () => import('@/views/dashboard/DashboardView.vue'),
           meta: { title: '工作台', requiresAuth: true },

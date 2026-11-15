@@ -36,6 +36,7 @@ declare module 'vue' {
     ElTag: typeof import('element-plus/es')['ElTag']
     RecruitmentCard: typeof import('./src/components/recruitment/RecruitmentCard.vue')['default']
     RecruitmentForm: typeof import('./src/components/recruitment/RecruitmentForm.vue')['default']
+    RecruitmentMembers: typeof import('./src/components/recruitment/RecruitmentMembers.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
   }
