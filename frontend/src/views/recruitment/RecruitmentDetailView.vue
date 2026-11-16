@@ -1,12 +1,20 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import FavoriteButton from '@/components/recruitment/FavoriteButton.vue'
+import RecruitmentApplicant from '@/components/recruitment/RecruitmentApplicant.vue'
+import RecruitmentMembers from '@/components/recruitment/RecruitmentMembers.vue'
+import { useFavoritesStore } from '@/stores/favorites'
+import { useApplicationsStore } from '@/stores/applications'
 import { getRecruitment } from '@/api/recruitment-query'
 import { useRecruitmentRead, useBrowseClock } from '@/composables/useRecruitmentRead'
 import { useAuthStore } from '@/stores/auth'
 import { displayStatus, displayDate } from '@/types/recruitment'
 const route = useRoute()
 const auth = useAuthStore()
+const favorites = useFavoritesStore(),
+  applications = useApplicationsStore()
+const members = ref<InstanceType<typeof RecruitmentMembers> | null>(null)
 const id = computed(() => String(route.params.id))
 const valid = computed(() => /^[1-9]\d*$/.test(id.value) && Number.isSafeInteger(Number(id.value)))
 const {
@@ -16,7 +24,13 @@ const {
   retry,
 } = useRecruitmentRead(
   () => id.value,
-  (value, signal) => (valid.value ? getRecruitment(Number(value), signal) : Promise.resolve(null)),
+  async (value, signal) => {
+    if (!valid.value) return null
+    const ingest = favorites.reader()
+    const row = await getRecruitment(Number(value), signal)
+    if (!signal.aborted) ingest([row])
+    return row
+  },
 )
 const now = useBrowseClock()
 const owned = computed(() => !!item.value && auth.user?.id === item.value.ownerId)
@@ -24,6 +38,11 @@ const owned = computed(() => !!item.value && auth.user?.id === item.value.ownerI
 <template>
   <main class="recruit">
     <RouterLink :to="{ name: 'recruitment-hall', query: route.query }">← 返回招募大厅</RouterLink>
+    <p v-if="applications.busy" role="status">正在处理申请，请稍候…</p>
+    <p v-if="auth.token && applications.notice" role="status">{{ applications.notice }}</p>
+    <p v-if="auth.token && applications.actionError" class="form-error" role="alert">
+      {{ applications.actionError }}
+    </p>
     <p v-if="!valid" role="alert">招募编号无效，请返回大厅重新选择。</p>
     <p v-else-if="loading" role="status">正在加载招募详情…</p>
     <section v-else-if="error" role="alert">
@@ -79,7 +98,14 @@ const owned = computed(() => !!item.value && auth.user?.id === item.value.ownerI
       <p v-if="displayStatus(item, now) !== '招募中'">
         当前为{{ displayStatus(item, now) }}，不能提交申请。
       </p>
-      <p>申请、收藏和私聊功能暂未开放。</p>
+      <FavoriteButton :item="item" />
+      <RecruitmentMembers ref="members" :recruitment-id="item.id" />
+      <RecruitmentApplicant
+        :item="item"
+        :members-ready="!!members && !members.loading && !members.error"
+        :member-ids="members?.members.map((member) => member.id) ?? []"
+        @refresh="retry"
+      />
     </article>
   </main>
 </template>

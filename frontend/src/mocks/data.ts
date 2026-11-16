@@ -1,6 +1,5 @@
 import type { Project } from '@/types/project'
 import type { Task, TaskStatus } from '@/types/task'
-import type { Notification } from '@/types/notification'
 
 export const currentUser = { id: 1, name: '张同学', team: 'TeamFlow 研发团队' }
 const timestamp = '2026-10-25T09:00:00'
@@ -91,7 +90,8 @@ export const tasks: Task[] = [
   updatedAt: timestamp,
 }))
 
-export const notifications: Notification[] = [
+// 旧页面演示数据，仅作历史参考，正式通知不使用此结构。
+export const notifications = [
   {
     id: 1,
     title: '你有一项新的任务',

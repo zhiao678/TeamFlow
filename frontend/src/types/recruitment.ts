@@ -13,10 +13,13 @@ export interface RecruitmentQuery {
   status: Exclude<RecruitmentStatus, 'DRAFT'>
   page: number
   pageSize: number
-  sort: 'LATEST' | 'DEADLINE'
+  sort: 'LATEST' | 'DEADLINE' | 'POPULAR'
+  tagIds?: string
+  minRemainingSlots?: number
 }
 export interface Recruitment {
   id: number
+  favorited: boolean
   ownerId: number
   ownerDisplayName: string
   categoryId: number

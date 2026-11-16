@@ -73,6 +73,7 @@ CREATE TABLE application (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     recruitment_id BIGINT NOT NULL,
     applicant_id BIGINT NOT NULL,
+    rejection_reason VARCHAR(255),
     introduction VARCHAR(1000),
     skills_description VARCHAR(1000),
     available_time VARCHAR(255),

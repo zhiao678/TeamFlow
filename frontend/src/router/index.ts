@@ -44,10 +44,28 @@ const router = createRouter({
           meta: { title: '招募详情' },
         },
         {
+          path: 'my-favorites',
+          name: 'my-favorites',
+          component: () => import('@/views/recruitment/MyFavoritesView.vue'),
+          meta: { title: '我的收藏', requiresAuth: true },
+        },
+        {
+          path: 'my-applications',
+          name: 'my-applications',
+          component: () => import('@/views/recruitment/MyApplicationsView.vue'),
+          meta: { title: '我的申请', requiresAuth: true },
+        },
+        {
           path: 'my-recruitments',
           name: 'my-recruitments',
           component: () => import('@/views/recruitment/MyRecruitmentsView.vue'),
           meta: { title: '我的招募', requiresAuth: true },
+        },
+        {
+          path: 'my-recruitments/:id/applications',
+          name: 'application-review',
+          component: () => import('@/views/recruitment/ApplicationReviewView.vue'),
+          meta: { title: '申请管理', requiresAuth: true },
         },
         {
           path: 'dashboard',
@@ -97,8 +115,9 @@ const router = createRouter({
         },
         {
           path: 'notifications',
+          name: 'notifications',
           component: () => import('@/views/notification/NotificationView.vue'),
-          meta: { title: '消息' },
+          meta: { title: '通知', requiresAuth: true },
         },
         {
           path: ':pathMatch(.*)*',
