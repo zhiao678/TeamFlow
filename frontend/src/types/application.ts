@@ -47,3 +47,9 @@ export const memberRoleLabels: Record<MemberRole, string> = {
 export function canReview(status: ApplicationStatus, recruitment: { status: string } | null) {
   return status === 'PENDING' && recruitment?.status === 'RECRUITING'
 }
+
+export interface ApplicationInput {
+  introduction?: string
+  skillsDescription?: string
+  availableTime?: string
+}

@@ -44,6 +44,18 @@ const router = createRouter({
           meta: { title: '招募详情' },
         },
         {
+          path: 'my-favorites',
+          name: 'my-favorites',
+          component: () => import('@/views/recruitment/MyFavoritesView.vue'),
+          meta: { title: '我的收藏', requiresAuth: true },
+        },
+        {
+          path: 'my-applications',
+          name: 'my-applications',
+          component: () => import('@/views/recruitment/MyApplicationsView.vue'),
+          meta: { title: '我的申请', requiresAuth: true },
+        },
+        {
           path: 'my-recruitments',
           name: 'my-recruitments',
           component: () => import('@/views/recruitment/MyRecruitmentsView.vue'),

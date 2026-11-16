@@ -34,10 +34,13 @@ declare module 'vue' {
     ElTable: typeof import('element-plus/es')['ElTable']
     ElTableColumn: typeof import('element-plus/es')['ElTableColumn']
     ElTag: typeof import('element-plus/es')['ElTag']
+    FavoriteButton: typeof import('./src/components/recruitment/FavoriteButton.vue')['default']
+    RecruitmentApplicant: typeof import('./src/components/recruitment/RecruitmentApplicant.vue')['default']
     RecruitmentCard: typeof import('./src/components/recruitment/RecruitmentCard.vue')['default']
     RecruitmentForm: typeof import('./src/components/recruitment/RecruitmentForm.vue')['default']
     RecruitmentMembers: typeof import('./src/components/recruitment/RecruitmentMembers.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    WithdrawApplication: typeof import('./src/components/recruitment/WithdrawApplication.vue')['default']
   }
 }

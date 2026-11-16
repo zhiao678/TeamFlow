@@ -288,3 +288,28 @@
   display: grid;
   gap: 6px;
 }
+
+.recruit-applicant,
+.recruit-application-form,
+.recruit-application-form label,
+.application-summary {
+  display: grid;
+  gap: 12px;
+}
+.recruit-applicant {
+  border-top: 1px solid #e2e8f0;
+  padding-top: 20px;
+}
+.recruit-application-form {
+  max-width: 720px;
+}
+.recruit-application-form small {
+  color: #586a81;
+}
+.application-highlight {
+  outline: 2px solid #315ed0;
+  scroll-margin-top: 90px;
+}
+.recruit select[multiple] {
+  min-height: 112px;
+}

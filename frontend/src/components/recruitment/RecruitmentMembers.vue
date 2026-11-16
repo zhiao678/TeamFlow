@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { sessionToken } from '@/api/session'
 import { listRecruitmentMembers, membersError } from '@/api/members'
 import { displayDate } from '@/types/recruitment'
 import { memberRoleLabels } from '@/types/application'
@@ -29,10 +30,10 @@ async function reload() {
 }
 
 onMounted(reload)
-watch(() => props.recruitmentId, reload)
+watch([() => props.recruitmentId, sessionToken], reload)
 onBeforeUnmount(() => controller?.abort())
 
-defineExpose({ reload })
+defineExpose({ reload, members, loading, error })
 </script>
 
 <template>

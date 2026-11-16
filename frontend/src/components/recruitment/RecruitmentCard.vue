@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import FavoriteButton from './FavoriteButton.vue'
 import { displayDate, displayStatus, type Recruitment } from '@/types/recruitment'
 defineProps<{ item: Recruitment; now: number }>()
 </script>
@@ -24,5 +25,6 @@ defineProps<{ item: Recruitment; now: number }>()
       <b>{{ item.currentMembers }} / {{ item.maxMembers }} 人 · 余 {{ item.remainingSlots }} 席</b
       ><small>截止：{{ displayDate(item.deadlineAt) }}</small>
     </div>
+    <FavoriteButton :item="item" />
   </article>
 </template>
