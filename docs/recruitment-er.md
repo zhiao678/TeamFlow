@@ -1,6 +1,6 @@
 # 招募平台 ER 设计
 
-本文与 `database/recruitment-init.sql` 对齐，共 19 张表。申请、成员管理、收藏、退出审核、负责人退出继任和通知已接入，聊天、屏蔽、举报按后续阶段推进。SQL 要求 MySQL 8.0.16 及以上版本，并会重建 `teamflow_recruitment` 中的表。已有库使用 `database/migrations/20261112-application-member-exit.sql` 增量升级。
+本文与 `database/recruitment-init.sql` 对齐，共 19 张表。申请、成员管理、收藏、退出审核、负责人退出继任、通知以及基础会话消息能力已接入；举报治理仍按后续阶段推进，屏蔽关系当前用于私聊权限校验。SQL 要求 MySQL 8.0.16 及以上版本，并会重建 `teamflow_recruitment` 中的表。已有库使用 `database/migrations/20261112-application-member-exit.sql` 增量升级。
 
 ## 1. 完整实体关系
 

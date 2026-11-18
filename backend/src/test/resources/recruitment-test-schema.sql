@@ -132,3 +132,69 @@ CREATE TABLE notification (
     FOREIGN KEY (recruitment_id) REFERENCES recruitment (id),
     FOREIGN KEY (application_id) REFERENCES application (id)
 );
+
+CREATE TABLE conversation (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    type VARCHAR(20) NOT NULL,
+    recruitment_id BIGINT,
+    direct_user_low_id BIGINT,
+    direct_user_high_id BIGINT,
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (recruitment_id),
+    UNIQUE (direct_user_low_id, direct_user_high_id),
+    CHECK (type IN ('DIRECT', 'TEAM')),
+    CHECK (status IN ('ACTIVE', 'READ_ONLY')),
+    CHECK ((type = 'TEAM' AND recruitment_id IS NOT NULL AND direct_user_low_id IS NULL AND direct_user_high_id IS NULL)
+        OR (type = 'DIRECT' AND recruitment_id IS NULL AND direct_user_low_id IS NOT NULL
+            AND direct_user_high_id IS NOT NULL AND direct_user_low_id < direct_user_high_id)),
+    FOREIGN KEY (recruitment_id) REFERENCES recruitment (id),
+    FOREIGN KEY (direct_user_low_id) REFERENCES `user` (id),
+    FOREIGN KEY (direct_user_high_id) REFERENCES `user` (id)
+);
+
+CREATE TABLE conversation_member (
+    conversation_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    left_at TIMESTAMP,
+    last_read_message_id BIGINT,
+    PRIMARY KEY (conversation_id, user_id),
+    CHECK (status IN ('ACTIVE', 'LEFT', 'REMOVED')),
+    CHECK ((status = 'ACTIVE' AND left_at IS NULL) OR (status <> 'ACTIVE' AND left_at IS NOT NULL)),
+    FOREIGN KEY (conversation_id) REFERENCES conversation (id),
+    FOREIGN KEY (user_id) REFERENCES `user` (id)
+);
+
+CREATE TABLE message (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    conversation_id BIGINT NOT NULL,
+    sender_id BIGINT NOT NULL,
+    client_message_id VARCHAR(64) NOT NULL,
+    source_recruitment_id BIGINT,
+    content VARCHAR(2000) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'VISIBLE',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (conversation_id, id),
+    UNIQUE (conversation_id, sender_id, client_message_id),
+    CHECK (CHAR_LENGTH(TRIM(content)) > 0),
+    CHECK (CHAR_LENGTH(TRIM(client_message_id)) > 0),
+    CHECK (status IN ('VISIBLE', 'HIDDEN')),
+    FOREIGN KEY (conversation_id, sender_id) REFERENCES conversation_member (conversation_id, user_id),
+    FOREIGN KEY (source_recruitment_id) REFERENCES recruitment (id)
+);
+
+ALTER TABLE conversation_member
+    ADD CONSTRAINT fk_conversation_member_read_message
+    FOREIGN KEY (conversation_id, last_read_message_id) REFERENCES message (conversation_id, id);
+
+CREATE TABLE user_block (
+    blocker_id BIGINT NOT NULL,
+    blocked_id BIGINT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (blocker_id, blocked_id),
+    CHECK (blocker_id <> blocked_id),
+    FOREIGN KEY (blocker_id) REFERENCES `user` (id),
+    FOREIGN KEY (blocked_id) REFERENCES `user` (id)
+);
