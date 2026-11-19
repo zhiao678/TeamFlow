@@ -677,16 +677,65 @@ PATCH /api/notifications/read-all
 
 需要登录，只能修改当前用户自己的通知。单条通知不存在或不属于当前用户时返回 `40400`；全部已读只影响当前用户。成功时返回统一空数据响应。
 
-## 8. 当前不在本文件中冻结的接口
+## 8. 会话与消息
 
-以下接口等核心招募流程确认后补充：
+以下接口需要登录。会话成员状态不是 `ACTIVE` 时，读取和发送消息均返回 `40300`；会话不存在返回 `40400`。
+
+### 8.1 会话列表
+
+```http
+GET /api/conversations
+```
+
+只返回当前用户仍为 `ACTIVE` 成员的会话，按创建时间倒序。会话对象包含：`id`、`type`（`DIRECT/TEAM`）、`recruitmentId`、`status`（`ACTIVE/READ_ONLY`）、`createdAt`、私聊对方的 `otherUserId/otherUserDisplayName`、`lastMessage`、`lastMessageAt` 和 `unreadCount`。
+
+### 8.2 创建或获取私聊
+
+```http
+POST /api/conversations/private
+```
+
+请求体为 `{"targetUserId":2}`，也兼容 `userId` 字段。用户不能和自己创建私聊，两个用户之间始终只有一个 `DIRECT` 会话；重复请求返回原会话。任一方向存在 `user_block` 关系时返回 `40300`。
+
+### 8.3 消息列表与短轮询
+
+```http
+GET /api/conversations/{conversationId}/messages?page=1&pageSize=50&afterMessageId=20
+```
+
+`page` 从 1 开始，`pageSize` 默认 50、最大 100。消息按 ID 升序返回，`afterMessageId` 用于短轮询，只返回 ID 更大的可见消息，并要求该 ID 属于当前会话。响应包含 `records`、`page`、`pageSize`、`total`、`hasMore` 和当前用户 `unreadCount`。
+
+### 8.4 发送消息
+
+```http
+POST /api/conversations/{conversationId}/messages
+```
+
+请求体：
+
+```json
+{
+  "clientMessageId": "client-generated-id",
+  "content": "文本消息",
+  "sourceRecruitmentId": 12
+}
+```
+
+`clientMessageId` 在同一会话和发送者范围内幂等，重试同一内容返回原消息；同一键对应不同内容返回 `40900`。只支持文本，正文长度为 1～2000 个字符。`sourceRecruitmentId` 可选，填写时必须引用现有招募。私聊发送前检查双方屏蔽关系，队伍群只允许当前 `ACTIVE` 会话成员发送。
+
+### 8.5 已读位置
+
+```http
+PATCH /api/conversations/{conversationId}/read
+```
+
+请求体为 `{"lastReadMessageId":20}`，也兼容 `messageId` 字段。消息必须属于该会话，已读位置只能前进，不能修改其他成员的游标。响应包含 `conversationId`、`lastReadMessageId` 和更新后的 `unreadCount`。
+
+前端使用 3～5 秒短轮询，不使用 WebSocket；进入会话或用户滚动到最新消息后调用已读接口。
+
+举报治理接口仍属于后续阶段：
 
 ```text
-GET  /api/conversations
-POST /api/conversations/private
-GET  /api/conversations/{id}/messages
-POST /api/conversations/{id}/messages
-
 POST  /api/reports
 GET   /api/admin/reports
 PATCH /api/admin/reports/{id}

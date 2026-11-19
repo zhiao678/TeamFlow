@@ -132,6 +132,11 @@ Authorization: Bearer <token>
 | `GET` | `/api/notifications` | 分页查询当前用户通知和未读数 |
 | `PATCH` | `/api/notifications/{id}/read` | 标记单条通知已读 |
 | `PATCH` | `/api/notifications/read-all` | 标记全部通知已读 |
+| `GET` | `/api/conversations` | 查询当前用户的活跃会话 |
+| `POST` | `/api/conversations/private` | 创建或获取唯一私聊 |
+| `GET` | `/api/conversations/{id}/messages` | 分页查询消息或按 ID 增量查询 |
+| `POST` | `/api/conversations/{id}/messages` | 发送幂等文本消息 |
+| `PATCH` | `/api/conversations/{id}/read` | 推进当前用户已读位置 |
 
 大厅返回 `data.records/page/pageSize/total`，我的招募返回数组。所有管理操作均检查 JWT 和负责人权限。参数与返回示例见招募 API 规范。
 
@@ -148,6 +153,10 @@ Authorization: Bearer <token>
 真实 MySQL 8.0.18 验证通过。最后名额、重复批准退出、重复确认继任的并发请求均仅一次成功。完整初始化生成 19 张表，从上一版结构执行增量升级两次后保留原有用户、招募和成员数据。
 
 前端需接入入队申请、负责人审核、退出申请及继任确认页面，核对新增通知目标 leaderTransferId 与 handoverHint 提示。我的招募沿用现任负责人查询口径，独立的创建历史展示待小组确认。
+
+### 会话与消息
+
+会话和消息接口使用 `recruitment` Profile 的同一套数据库。私聊通过规范化用户 ID 对保证唯一，队伍群会话由成队事务创建；消息使用 `clientMessageId` 做发送幂等。消息历史支持分页和 `afterMessageId` 增量查询，前端按 3～5 秒短轮询，不使用 WebSocket。会话成员被标记为 `LEFT` 或 `REMOVED` 后不能继续访问消息，发送私聊时同时检查双向屏蔽关系。
 
 ## 统一响应
 
