@@ -6,6 +6,8 @@ import App from './App.vue'
 import router from './router'
 import { useAuthStore } from './stores/auth'
 import { useNotificationsStore } from './stores/notifications'
+import { useConversationsStore } from './stores/conversations'
+import { useTeamSyncStore } from './stores/team-sync'
 import './assets/styles/index.css'
 import './assets/styles/recruitment.css'
 import './assets/styles/projects.css'
@@ -15,12 +17,23 @@ const app = createApp(App)
 app.use(createPinia())
 const auth = useAuthStore()
 const notifications = useNotificationsStore()
+const conversations = useConversationsStore()
+const teamSync = useTeamSyncStore()
 watch(
   () => [auth.user?.id, auth.token],
   () => {
-    if (auth.user && auth.token) void notifications.refreshUnreadCount()
+    if (auth.user && auth.token) {
+      void notifications.refreshUnreadCount()
+      void conversations.refresh()
+    }
   },
   { immediate: true },
+)
+watch(
+  () => teamSync.conversationsRevision,
+  () => {
+    if (auth.user && auth.token) void conversations.refresh()
+  },
 )
 window.addEventListener('teamflow:unauthorized', () => {
   useAuthStore().clear()

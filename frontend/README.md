@@ -11,12 +11,15 @@
 ### 队伍与聊天公共约定
 
 本周新增页面统一使用 [队伍与聊天接入约定](docs/team-chat-foundation.md) 中的路由、类型、API 和刷新方法。
-当前只提供公共基础，不注册空业务页；页面完成后在 `createTeamRoutes` 接入。
+会话列表和通用聊天页已接入；其他队伍业务页完成后在 `createTeamRoutes` 接入，不注册空业务页。
 可运行 `node scripts/check-team-foundation.mjs` 做本地契约检查。
+
+聊天支持历史分页、4 秒增量短轮询、同编号失败重试、可见视口已读及独立聊天未读数。
+详见 [聊天与本周通知接入说明](docs/chat-notification-integration.md)，可运行 `node scripts/check-chat.mjs` 做回归检查。
 
 ### 站内通知
 
-通知中心、未读数和已读操作已接入真实后端，详情见 [通知对接说明](docs/notifications-integration.md)。
+通知中心、未读数和已读操作已接入真实后端，本周事件与跳转见 [通知接入说明](docs/chat-notification-integration.md)。
 申请和审核操作成功后，可调用 `useNotificationsStore().refreshUnreadCount()` 刷新全局未读数。
 我的申请页面尚未注册时，结果通知只展示内容并提示入口待接入；不会跳转到不存在的页面。
 可运行 `node scripts/check-notifications.mjs` 进行本地契约回归，仍需真实后端和两个账号完成跨模块验收。
@@ -71,7 +74,7 @@
 - 草稿允许编辑全部字段；招募中只提交 `description/requirements/tagIds/deadlineAt/maxMembers`，核心字段只读；已成队和已关闭不可编辑。
 - 删除草稿会确认后调用 `DELETE /api/recruitments/{id}`，失败保留记录；发布和关闭使用正式接口。
 - 技能标签最多 20 项，取消全部选择并保存可清空。旧技能名称无法唯一匹配选项时保留原值，避免错误覆盖。
-- 申请与收藏已接入真实接口：大厅/详情收藏、我的收藏、详情申请与撤回、我的申请历史。实现与验收见 [招募发现与申请人交付说明](docs/recruitment-discovery-applicant-completion.md)。私聊仍未开放。
+- 申请与收藏已接入真实接口：大厅/详情收藏、我的收藏、详情申请与撤回、我的申请历史。实现与验收见 [招募发现与申请人交付说明](docs/recruitment-discovery-applicant-completion.md)。群聊与私聊已提供通用页面，详情联系入口由成员侧模块接入。
 
 招募验收：检查 Network 中大厅查询参数和分页结果；返回列表保留筛选；
 创建草稿 → 编辑 → 发布 → 招募中受限编辑 → 关闭；另建草稿测试删除及失败反馈。

@@ -1,4 +1,5 @@
 import type { Notification } from '@/types/notification'
+import { teamRoutes, teamRoutePath } from '@/router/team-routes'
 
 export interface NotificationTarget {
   path: string | null
@@ -13,6 +14,34 @@ export function notificationTarget(
   item: Notification,
   availablePaths: readonly string[],
 ): NotificationTarget {
+  if (item.targetType === 'LEADER_TRANSFER' && validId(item.leaderTransferId)) {
+    return availablePaths.includes(teamRoutes.leaderTransfers.path)
+      ? {
+          path: teamRoutePath('leaderTransfers'),
+          query: { transferId: String(item.leaderTransferId) },
+          label: '查看负责人转交',
+          hint: '',
+        }
+      : { path: null, label: '', hint: '负责人转交页面待接入，请保留此通知并稍后查看。' }
+  }
+  if (
+    item.targetType === 'RECRUITMENT' &&
+    validId(item.recruitmentId) &&
+    item.eventType === 'MEMBER_EXIT_REQUESTED'
+  ) {
+    if (availablePaths.includes(teamRoutes.teamManagement.path))
+      return {
+        path: teamRoutePath('teamManagement', item.recruitmentId),
+        label: '审批退出申请',
+        hint: '',
+      }
+    if (availablePaths.includes('/my-recruitments'))
+      return {
+        path: '/my-recruitments',
+        label: '查看我的招募',
+        hint: '队伍管理页面待接入，请从对应招募查看退出申请。',
+      }
+  }
   if (item.targetType === 'APPLICATION' && validId(item.applicationId)) {
     if (['APPLICATION_SUBMITTED', 'APPLICATION_WITHDRAWN'].includes(item.eventType)) {
       return availablePaths.includes('/my-recruitments')

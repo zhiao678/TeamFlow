@@ -1,6 +1,7 @@
 # 队伍管理与聊天：公共接入约定
 
-本次仅准备路由、类型、API 和共享方法，不实现页面、聊天轮询或导航入口。
+最初公共基础包括路由、类型、API 和共享方法。后续会话列表、聊天页、轮询和导航已实现，
+详见 [聊天与通知接入说明](chat-notification-integration.md)；其他队伍业务页面仍由对应模块接入。
 所有字段已对照当前后端 DTO/VO；真实接口和规则见 [API 规范](../../docs/recruitment-api-spec.md)。
 
 ## 路由和页面分工
@@ -16,7 +17,7 @@
 | leaderTransfers | `/my-leader-transfers` | my-leader-transfers | 招募浏览/成员侧 |
 | teamManagement | `/my-recruitments/:id/team-management` | team-management | 招募管理，id 为招募 ID |
 
-`src/router/index.ts` 已预留 `createTeamRoutes({})` 接入点。页面完成后把 loader 加进去：
+`src/router/index.ts` 已通过 `createTeamRoutes` 接入聊天页面。其他页面完成后补对应 loader，并保留现有聊天 loader：
 
 ```ts
 ...createTeamRoutes({
@@ -26,11 +27,11 @@
 ```
 
 工厂自动附带 `meta.title` 和 `meta.requiresAuth: true`，只注册实际传入的页面。
-当前空对象不增加占位页、可点击空入口或可绕过的登录限制。
+当前已注册 conversations/conversation 两个 loader；补其他页面时保留已有配置，不添加占位页或空入口。
 进入页面可使用 `teamRoutePath('conversation', conversation.id)`；动态 ID 必须为正整数。
 调用方应确认路由已注册，例如 `router.hasRoute(teamRoutes.conversation.name)`，再展示入口。
 转交通知后续约定跳 `leaderTransfers` 并传 `transferId` query；该页需支持记录定位。
-本次不改变现有通知跳转，待页面实际接入后统一启用。
+本周通知已按实际路由增加条件跳转，尚未注册的业务页面仍提示待接入。
 
 ## 类型与 API 归属
 
@@ -81,7 +82,7 @@ Token 变化会清理刷新状态，旧 session 的后续调用不会影响新�
 - `mergeConversationMessages(conversationId, current, incoming)`：按服务端 ID 去重升序，只允许合并同一会话。
 
 发送请求不会自动生成 ID 或把消息标记为发送成功；页面需保存待发送/失败状态，成功后用服务端对象替换。
-历史分页、增量短轮询 3–5 秒、停止轮询、权限失效和视口已读判断留给聊天页面实现。
+聊天页面已实现历史分页、4 秒增量短轮询、停止轮询、权限失效和可见视口已读判断。
 没有当前会话的消息游标时省略 afterMessageId，不传 0 或其他会话的 ID。
 增量 hasMore=true 时应继续取后续批次，避免一次只取一批造成漏消息。
 聊天 unreadCount 与站内通知 unreadCount 独立维护；Conversation.status=READ_ONLY 时不得提供发送入口。
@@ -92,7 +93,7 @@ Token 变化会清理刷新状态，旧 session 的后续调用不会影响新�
 - 我的队伍以有权访问的 TEAM 会话为依据，不从申请历史推断成员身份。
 - 负责人确认转交前保持原资格；接受后按服务端 exitAfterTransfer 区分原负责人是否离队。
 - 普通退出提交后仍是成员，只有批准后才离队；移除、退出、转交后重新查询群权限。
-- 原有筛选、收藏、申请与通知行为保持不变，本次未提前实现业务页面或成员状态转换。
+- 原有筛选、收藏、申请行为保持不变；未提前实现其他负责人的队伍业务页面或本地成员状态转换。
 
 ## 检查
 

@@ -21,7 +21,10 @@ const router = createRouter({
       redirect: '/dashboard',
       children: [
         // 本周页面完成后在这里传入 loader；统一名称、路径及登录保护。
-        ...createTeamRoutes({}),
+        ...createTeamRoutes({
+          conversations: () => import('@/views/conversation/ConversationListView.vue'),
+          conversation: () => import('@/views/conversation/ConversationView.vue'),
+        }),
         {
           path: 'recruitments',
           name: 'recruitment-hall',
