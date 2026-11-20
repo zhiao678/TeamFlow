@@ -9,12 +9,16 @@ import com.teamflow.backend.dto.RecruitmentQueryRequest;
 import com.teamflow.backend.dto.UpdateRecruitmentRequest;
 import com.teamflow.backend.entity.Application;
 import com.teamflow.backend.entity.Category;
+import com.teamflow.backend.entity.Conversation;
+import com.teamflow.backend.entity.ConversationMember;
 import com.teamflow.backend.entity.Recruitment;
 import com.teamflow.backend.entity.RecruitmentTag;
 import com.teamflow.backend.entity.Tag;
 import com.teamflow.backend.entity.TeamMember;
 import com.teamflow.backend.mapper.ApplicationMapper;
 import com.teamflow.backend.mapper.CategoryMapper;
+import com.teamflow.backend.mapper.ConversationMapper;
+import com.teamflow.backend.mapper.ConversationMemberMapper;
 import com.teamflow.backend.mapper.RecruitmentMapper;
 import com.teamflow.backend.mapper.RecruitmentFavoriteMapper;
 import com.teamflow.backend.mapper.RecruitmentTagMapper;
@@ -23,10 +27,12 @@ import com.teamflow.backend.mapper.TeamMemberMapper;
 import com.teamflow.backend.service.NotificationService;
 import com.teamflow.backend.service.RecruitmentService;
 import com.teamflow.backend.vo.CategoryVO;
+import com.teamflow.backend.vo.ConversationVO;
 import com.teamflow.backend.vo.RecruitmentPageVO;
 import com.teamflow.backend.vo.RecruitmentVO;
 import com.teamflow.backend.vo.TagVO;
 import org.springframework.stereotype.Service;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -43,6 +49,8 @@ public class RecruitmentServiceImpl implements RecruitmentService {
     private final RecruitmentFavoriteMapper recruitmentFavoriteMapper;
     private final ApplicationMapper applicationMapper;
     private final NotificationService notificationService;
+    private final ConversationMapper conversationMapper;
+    private final ConversationMemberMapper conversationMemberMapper;
 
     public RecruitmentServiceImpl(
             RecruitmentMapper recruitmentMapper,
@@ -52,7 +60,9 @@ public class RecruitmentServiceImpl implements RecruitmentService {
             TagMapper tagMapper,
             RecruitmentFavoriteMapper recruitmentFavoriteMapper,
             ApplicationMapper applicationMapper,
-            NotificationService notificationService
+            NotificationService notificationService,
+            ConversationMapper conversationMapper,
+            ConversationMemberMapper conversationMemberMapper
     ) {
         this.recruitmentMapper = recruitmentMapper;
         this.recruitmentTagMapper = recruitmentTagMapper;
@@ -62,6 +72,8 @@ public class RecruitmentServiceImpl implements RecruitmentService {
         this.recruitmentFavoriteMapper = recruitmentFavoriteMapper;
         this.applicationMapper = applicationMapper;
         this.notificationService = notificationService;
+        this.conversationMapper = conversationMapper;
+        this.conversationMemberMapper = conversationMemberMapper;
     }
 
     @Override
@@ -221,14 +233,84 @@ public class RecruitmentServiceImpl implements RecruitmentService {
         recruitment.setCloseReason(reason);
         recruitment.setUpdatedAt(LocalDateTime.now());
         recruitmentMapper.updateById(recruitment);
-        for (Application application : applicationMapper.selectPendingForUpdate(id)) {
+        expirePendingApplications(recruitment,
+                "招募「" + recruitment.getTitle() + "」已关闭，你的待处理申请已失效");
+        return getRecruitment(id);
+    }
+
+    @Override
+    @Transactional
+    public RecruitmentVO formTeam(Long id) {
+        Recruitment recruitment = requireOwnedRecruitment(id);
+        if (!"RECRUITING".equals(recruitment.getStatus())) {
+            throw new BusinessException(ErrorCode.CONFLICT, "only recruiting recruitment can form a team");
+        }
+        if (conversationMapper.selectTeamByRecruitment(id) != null) {
+            throw new BusinessException(ErrorCode.CONFLICT, "team conversation already exists");
+        }
+        List<TeamMember> members = teamMemberMapper.selectList(Wrappers.<TeamMember>lambdaQuery()
+                .eq(TeamMember::getRecruitmentId, id)
+                .eq(TeamMember::getStatus, "ACTIVE")
+                .orderByAsc(TeamMember::getId));
+
+        recruitment.setStatus("TEAMED");
+        recruitment.setUpdatedAt(LocalDateTime.now());
+        recruitmentMapper.updateById(recruitment);
+        expirePendingApplications(recruitment,
+                "招募「" + recruitment.getTitle() + "」已成队，你的待处理申请已失效");
+
+        Conversation conversation = new Conversation();
+        conversation.setType("TEAM");
+        conversation.setRecruitmentId(id);
+        conversation.setStatus("ACTIVE");
+        try {
+            conversationMapper.insert(conversation);
+        } catch (DuplicateKeyException exception) {
+            throw new BusinessException(ErrorCode.CONFLICT, "team conversation already exists");
+        }
+        for (TeamMember member : members) {
+            ConversationMember conversationMember = new ConversationMember();
+            conversationMember.setConversationId(conversation.getId());
+            conversationMember.setUserId(member.getUserId());
+            conversationMember.setStatus("ACTIVE");
+            conversationMemberMapper.insert(conversationMember);
+            notificationService.create(member.getUserId(), recruitment.getOwnerId(),
+                    "RECRUITMENT_TEAMED", "recruitment:" + id + ":teamed",
+                    "RECRUITMENT", id, null, "队伍已成队",
+                    "招募「" + recruitment.getTitle() + "」已成队，可进入队伍群聊");
+        }
+        return getRecruitment(id);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ConversationVO getTeamConversation(Long id) {
+        Long userId = CurrentUserContext.require();
+        if (recruitmentMapper.selectById(id) == null) {
+            throw new BusinessException(ErrorCode.DATA_NOT_FOUND, "recruitment not found");
+        }
+        Conversation conversation = conversationMapper.selectTeamByRecruitment(id);
+        if (conversation == null) {
+            throw new BusinessException(ErrorCode.DATA_NOT_FOUND, "team conversation not found");
+        }
+        TeamMember member = teamMemberMapper.selectByRecruitmentAndUser(id, userId);
+        if (member == null || !"ACTIVE".equals(member.getStatus())) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "only active team members can access the team conversation");
+        }
+        ConversationVO result = conversationMapper.selectView(conversation.getId(), userId);
+        if (result == null) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "only active conversation members can access the team conversation");
+        }
+        return result;
+    }
+
+    private void expirePendingApplications(Recruitment recruitment, String content) {
+        for (Application application : applicationMapper.selectPendingForUpdate(recruitment.getId())) {
             applicationMapper.process(application.getId(), "EXPIRED", null);
             notificationService.create(application.getApplicantId(), recruitment.getOwnerId(),
                     "APPLICATION_EXPIRED", "application:" + application.getId() + ":expired",
-                    "APPLICATION", null, application.getId(), "入队申请已失效",
-                    "招募「" + recruitment.getTitle() + "」已关闭，你的待处理申请已失效");
+                    "APPLICATION", null, application.getId(), "入队申请已失效", content);
         }
-        return getRecruitment(id);
     }
 
     @Override

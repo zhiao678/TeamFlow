@@ -127,7 +127,7 @@ public class ConversationServiceImpl implements ConversationService {
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public MessageVO sendMessage(Long conversationId, SendMessageRequest request) {
         Long userId = CurrentUserContext.require();
-        Conversation conversation = requireConversationForUpdate(conversationId);
+        Conversation conversation = requireConversationForUpdate(conversationId, request.sourceRecruitmentId());
         ConversationMember member = requireActiveMember(conversationId, userId, true);
         if (!"ACTIVE".equals(conversation.getStatus())) {
             throw new BusinessException(ErrorCode.CONFLICT, "conversation is read-only");
@@ -146,8 +146,11 @@ public class ConversationServiceImpl implements ConversationService {
             return messageMapper.selectView(conversationId, existing.getId());
         }
 
-        if (request.sourceRecruitmentId() != null && recruitmentMapper.selectById(request.sourceRecruitmentId()) == null) {
-            throw new BusinessException(ErrorCode.DATA_NOT_FOUND, "source recruitment not found");
+        if (request.sourceRecruitmentId() != null) {
+            Recruitment source = recruitmentMapper.selectById(request.sourceRecruitmentId());
+            if (source == null || "DRAFT".equals(source.getStatus())) {
+                throw new BusinessException(ErrorCode.DATA_NOT_FOUND, "source recruitment not found");
+            }
         }
         Message message = new Message();
         message.setConversationId(conversationId);
@@ -190,6 +193,23 @@ public class ConversationServiceImpl implements ConversationService {
     }
 
     private Conversation requireConversationForUpdate(Long conversationId) {
+        return requireConversationForUpdate(conversationId, null);
+    }
+
+    private Conversation requireConversationForUpdate(Long conversationId, Long sourceRecruitmentId) {
+        Conversation current = requireConversation(conversationId);
+        if ("TEAM".equals(current.getType())) {
+            List<Long> recruitmentIds = java.util.stream.Stream.of(current.getRecruitmentId(), sourceRecruitmentId)
+                    .filter(java.util.Objects::nonNull)
+                    .distinct()
+                    .sorted()
+                    .toList();
+            for (Long recruitmentId : recruitmentIds) {
+                if (recruitmentMapper.selectForUpdate(recruitmentId) == null) {
+                    throw new BusinessException(ErrorCode.DATA_NOT_FOUND, "recruitment not found");
+                }
+            }
+        }
         Conversation conversation = conversationMapper.selectForUpdate(conversationId);
         if (conversation == null) {
             throw new BusinessException(ErrorCode.DATA_NOT_FOUND, "conversation not found");

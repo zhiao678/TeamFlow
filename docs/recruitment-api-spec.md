@@ -2,7 +2,7 @@
 
 本文档基于 `recruitment-decisions.md` 和 `recruitment-er.md`，用于前后端共同开发。
 
-截至 2026-11-12，第 3 至 7 节的用户、资料、招募、申请、成员、退出审核、负责人继任及通知接口已实现。第 6.7 节保留后续确认成队约定。
+截至 2026-11-20，第 3 至 8 节的用户、资料、招募、申请、成员、退出审核、负责人继任、确认成队、队伍群查询、通知及会话消息接口已实现。
 
 ## 1. 基础约定
 
@@ -405,7 +405,7 @@ GET /api/recruitments/mine
 Authorization: Bearer <token>
 ```
 
-需要登录。当前按 `ownerId` 返回本人负责的全部招募，包含四种状态，按创建时间降序、ID 降序排列。响应 `data` 是第 4 节对象的数组，无数据时为 `[]`。不接受大厅分页或筛选参数。当前尚无转交功能，创建者即负责人，后续转交时需按业务决策明确创建者和负责人的查询口径。
+需要登录。当前按 `ownerId` 返回本人负责的全部招募，包含四种状态，按创建时间降序、ID 降序排列。响应 `data` 是第 4 节对象的数组，无数据时为 `[]`。该接口不分页。负责人转交后由新负责人管理该招募，创建历史的独立展示口径待小组确认。
 
 ### 5.9 分类与技能标签
 
@@ -565,18 +565,53 @@ DELETE /api/recruitments/{id}/members/{userId}
 
 自行调用 DELETE 返回状态冲突，普通成员使用退出申请，负责人使用选定继任者流程。重复移除返回 `40900`。
 
-### 6.7 确认成队（后续接口约定）
+### 6.7 确认成队与队伍群
 
 ```http
 POST /api/recruitments/{id}/form-team
 ```
 
-只有负责人可以操作。允许未满员成队。服务端在同一事务中：
+需要登录，仅当前负责人可以操作。招募必须为 RECRUITING，允许未满员或仅有负责人时确认。服务端先锁招募行，在同一事务中完成以下操作。
 
 - 将招募状态改为 `TEAMED`。
 - 将剩余 `PENDING` 申请改为 `EXPIRED`。
-- 创建唯一的队伍群聊。
-- 发送相关通知。
+- 创建该招募唯一的 TEAM 会话，状态为 ACTIVE。
+- 将当前全部 ACTIVE 队伍成员加入 conversation_member，负责人也计入。
+- 向全部 ACTIVE 队伍成员发送 RECRUITMENT_TEAMED 通知。
+
+成功返回 HTTP 200 和第 4 节招募对象，status 为 TEAMED。DRAFT、TEAMED 和 CLOSED 返回 `40900`，其他用户返回 `40300`，未登录返回 `40100`，招募不存在返回 `40400`。
+
+同一招募行锁与会话 recruitment_id 唯一约束共同保证并发只有一次成队成功。重复确认返回 `40900`，成员和通知保持单次写入。状态、申请、会话、群成员或通知写入失败时整体回滚。
+
+```http
+GET /api/recruitments/{id}/team-conversation
+Authorization: Bearer <token>
+```
+
+仅当前 ACTIVE 队伍成员且对应 conversation_member 也为 ACTIVE 时可查询。成功返回 HTTP 200，data 为现有 ConversationVO，包含 id、type、recruitmentId、status、createdAt、otherUserId、otherUserDisplayName、lastMessage、lastMessageAt 和 unreadCount。TEAM 的 otherUserId 和 otherUserDisplayName 为空。
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "id": 12,
+    "type": "TEAM",
+    "recruitmentId": 3,
+    "status": "ACTIVE",
+    "createdAt": "2026-11-20T10:00:00",
+    "otherUserId": null,
+    "otherUserDisplayName": null,
+    "lastMessage": null,
+    "lastMessageAt": null,
+    "unreadCount": 0
+  }
+}
+```
+
+未登录返回 `40100`，招募或队伍群不存在返回 `40400`。已有群时，非成员或失效成员返回 `40300`。普通成员退出获批、负责人移除成员、原负责人完成退出继任后，群入口及消息访问资格同步撤销。
+
+conversation_member 保存会话资格与已读位置，负责人身份从当前 ownerId 和 team_member.role 获取。前端取得会话 id 后复用第 8 节的历史、增量消息、发送和已读接口。
 
 ### 6.8 成员申请退出
 
@@ -721,7 +756,7 @@ POST /api/conversations/{conversationId}/messages
 }
 ```
 
-`clientMessageId` 在同一会话和发送者范围内幂等，重试同一内容返回原消息；同一键对应不同内容返回 `40900`。只支持文本，正文长度为 1～2000 个字符。`sourceRecruitmentId` 可选，填写时必须引用现有招募。私聊发送前检查双方屏蔽关系，队伍群只允许当前 `ACTIVE` 会话成员发送。
+`clientMessageId` 在同一会话和发送者范围内幂等，重试同一内容返回原消息，同一键对应不同内容返回 `40900`。正文支持 1～2000 个字符的文本。`sourceRecruitmentId` 可选，填写时必须引用公开招募，来源不存在或为 DRAFT 时返回 `40400`。私聊发送前检查双方屏蔽关系，队伍群仅允许当前 ACTIVE 会话成员发送。TEAM 发送时按 ID 升序锁定所属及来源招募，再锁会话和群成员，已读操作先锁所属招募，与退队、移除及继任保持一致顺序。
 
 ### 8.5 已读位置
 

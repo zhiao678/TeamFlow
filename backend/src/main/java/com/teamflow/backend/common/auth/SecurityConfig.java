@@ -54,7 +54,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/register", "/api/auth/login",
                                 "/doc.html", "/v3/api-docs/**", "/swagger-ui/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/recruitments/mine",
-                                "/api/recruitments/*/applications").authenticated()
+                                "/api/recruitments/*/applications",
+                                "/api/recruitments/*/team-conversation").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/recruitments/**", "/api/categories", "/api/tags").permitAll()
                         .requestMatchers("/api/projects/**", "/api/tasks/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")

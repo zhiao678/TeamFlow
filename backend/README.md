@@ -126,6 +126,8 @@ Authorization: Bearer <token>
 | `PATCH` | `/api/recruitments/{id}` | 按状态编辑允许字段 |
 | `POST` | `/api/recruitments/{id}/publish` | 发布草稿 |
 | `POST` | `/api/recruitments/{id}/close` | 关闭招募中记录 |
+| `POST` | `/api/recruitments/{id}/form-team` | 负责人确认成队并创建唯一队伍群 |
+| `GET` | `/api/recruitments/{id}/team-conversation` | 当前有效队伍及群成员查询群会话 |
 | `DELETE` | `/api/recruitments/{id}` | 删除草稿 |
 | `POST/DELETE` | `/api/recruitments/{id}/favorite` | 收藏或取消收藏 |
 | `GET` | `/api/categories`、`/api/tags` | 查询启用分类和技能标签 |
@@ -146,7 +148,7 @@ Authorization: Bearer <token>
 
 普通成员退出需要提交申请并由负责人审核，批准前保持正式成员资格。负责人退出先选定本队普通成员，由继任者确认后原子转交并离队，交接通过简短提示沟通。列表、审批及转交接口见 API 规范第 6 节。
 
-### 本周验证与联调
+### 申请与成员验证记录
 
 2026-11-12 本地完整验证版本共 89 项测试通过，失败、错误和跳过均为 0。新增测试覆盖申请权限、重复申请、截止和满员、最后名额并发、成员退出审核、继任确认、通知幂等与通知失败时的整体回滚。历史普通负责人转交记录也已验证，确认后原负责人继续作为普通成员留队。本次提交的验证范围和前端待联调事项见交接说明。
 
@@ -157,6 +159,14 @@ Authorization: Bearer <token>
 ### 会话与消息
 
 会话和消息接口使用 `recruitment` Profile 的同一套数据库。私聊通过规范化用户 ID 对保证唯一，队伍群会话由成队事务创建；消息使用 `clientMessageId` 做发送幂等。消息历史支持分页和 `afterMessageId` 增量查询，前端按 3～5 秒短轮询，不使用 WebSocket。会话成员被标记为 `LEFT` 或 `REMOVED` 后不能继续访问消息，发送私聊时同时检查双向屏蔽关系。
+
+### 确认成队与队伍群
+
+负责人可将 RECRUITING 招募确认成队，允许未满员。状态变为 TEAMED、待处理申请失效及通知、唯一 TEAM 会话、全部 ACTIVE 成员入群和成队通知在同一事务中提交。重复或并发确认仅一次成功，其余返回 409。
+
+队伍群查询返回现有 ConversationVO，前端取得 id 后调用消息和已读接口。退出审核通过、移除成员及原负责人继任离队会同步撤销群资格。队伍角色以当前负责人和 team_member.role 为准。
+
+2026-11-20 本地完整验证共 64 项测试通过，实际提交版本原有 46 项测试及打包通过，真实 MySQL 成队并发、群消息和成员变更验证通过。前端待接入的成队操作、群入口、聊天及通知展示详见交接说明。
 
 ## 统一响应
 
@@ -201,6 +211,7 @@ Java 基础包为 `com.teamflow.backend`：
 - 新版接口规范：[recruitment-api-spec.md](../docs/recruitment-api-spec.md)
 - 新版业务规则：[recruitment-decisions.md](../docs/recruitment-decisions.md)
 - 新版 ER 设计：[recruitment-er.md](../docs/recruitment-er.md)
+- [成队与队伍群交接说明](../docs/team-formation-handoff.md)
 - 旧项目/任务接口规范：[api-spec.md](../docs/api-spec.md)
 
 旧项目、任务代码和 `database/init.sql` 暂时保留，避免破坏已有演示与测试。新版功能使用 `teamflow_recruitment` 数据库和 `recruitment` Spring Profile，后续按阶段逐步替换旧业务。
