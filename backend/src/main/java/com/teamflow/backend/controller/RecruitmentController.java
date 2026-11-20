@@ -6,6 +6,7 @@ import com.teamflow.backend.dto.CreateRecruitmentRequest;
 import com.teamflow.backend.dto.RecruitmentQueryRequest;
 import com.teamflow.backend.dto.UpdateRecruitmentRequest;
 import com.teamflow.backend.service.RecruitmentService;
+import com.teamflow.backend.vo.ConversationVO;
 import com.teamflow.backend.vo.RecruitmentPageVO;
 import com.teamflow.backend.vo.RecruitmentVO;
 import jakarta.validation.Valid;
@@ -81,6 +82,16 @@ public class RecruitmentController {
                 id,
                 body == null ? null : body.reason()
         ));
+    }
+
+    @PostMapping("/{id}/form-team")
+    public Result<RecruitmentVO> formTeam(@PathVariable @Positive Long id) {
+        return Result.success(recruitmentService.formTeam(id));
+    }
+
+    @GetMapping("/{id}/team-conversation")
+    public Result<ConversationVO> teamConversation(@PathVariable @Positive Long id) {
+        return Result.success(recruitmentService.getTeamConversation(id));
     }
 
     @DeleteMapping("/{id}")

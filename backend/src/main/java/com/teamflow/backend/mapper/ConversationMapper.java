@@ -39,6 +39,9 @@ public interface ConversationMapper extends BaseMapper<Conversation> {
     @Select("SELECT * FROM conversation WHERE id = #{id} FOR UPDATE")
     Conversation selectForUpdate(@Param("id") Long id);
 
+    @Select("SELECT * FROM conversation WHERE type = 'TEAM' AND recruitment_id = #{recruitmentId}")
+    Conversation selectTeamByRecruitment(@Param("recruitmentId") Long recruitmentId);
+
     @Select("""
             SELECT * FROM conversation
             WHERE type = 'DIRECT'

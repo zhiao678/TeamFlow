@@ -4,6 +4,7 @@ import com.teamflow.backend.dto.CreateRecruitmentRequest;
 import com.teamflow.backend.dto.RecruitmentQueryRequest;
 import com.teamflow.backend.dto.UpdateRecruitmentRequest;
 import com.teamflow.backend.vo.CategoryVO;
+import com.teamflow.backend.vo.ConversationVO;
 import com.teamflow.backend.vo.RecruitmentPageVO;
 import com.teamflow.backend.vo.RecruitmentVO;
 import com.teamflow.backend.vo.TagVO;
@@ -20,6 +21,8 @@ public interface RecruitmentService {
     RecruitmentVO updateRecruitment(Long id, UpdateRecruitmentRequest request);
     RecruitmentVO publishRecruitment(Long id);
     RecruitmentVO closeRecruitment(Long id, String reason);
+    RecruitmentVO formTeam(Long id);
+    ConversationVO getTeamConversation(Long id);
     void deleteDraft(Long id);
     void favorite(Long id);
     void unfavorite(Long id);
