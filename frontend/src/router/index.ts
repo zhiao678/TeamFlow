@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { createTeamRoutes } from './team-routes'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -19,6 +20,8 @@ const router = createRouter({
       component: () => import('@/layouts/MainLayout.vue'),
       redirect: '/dashboard',
       children: [
+        // 本周页面完成后在这里传入 loader；统一名称、路径及登录保护。
+        ...createTeamRoutes({}),
         {
           path: 'recruitments',
           name: 'recruitment-hall',

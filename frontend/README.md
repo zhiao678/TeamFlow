@@ -8,6 +8,12 @@
 
 ## 相关指引
 
+### 队伍与聊天公共约定
+
+本周新增页面统一使用 [队伍与聊天接入约定](docs/team-chat-foundation.md) 中的路由、类型、API 和刷新方法。
+当前只提供公共基础，不注册空业务页；页面完成后在 `createTeamRoutes` 接入。
+可运行 `node scripts/check-team-foundation.mjs` 做本地契约检查。
+
 ### 站内通知
 
 通知中心、未读数和已读操作已接入真实后端，详情见 [通知对接说明](docs/notifications-integration.md)。
