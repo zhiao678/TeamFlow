@@ -11,7 +11,8 @@
 ### 队伍与聊天公共约定
 
 本周新增页面统一使用 [队伍与聊天接入约定](docs/team-chat-foundation.md) 中的路由、类型、API 和刷新方法。
-会话列表和通用聊天页已接入；其他队伍业务页完成后在 `createTeamRoutes` 接入，不注册空业务页。
+会话列表、通用聊天、我的队伍、我的退出申请和负责人转交已接入；负责人管理页完成后在 `createTeamRoutes` 接入，不注册空业务页。
+成员侧实现、接口和三账号验收见 [我的队伍与成员侧交付说明](docs/team-member-side-completion.md)。
 可运行 `node scripts/check-team-foundation.mjs` 做本地契约检查。
 
 聊天支持历史分页、4 秒增量短轮询、同编号失败重试、可见视口已读及独立聊天未读数。

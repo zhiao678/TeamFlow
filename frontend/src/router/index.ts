@@ -22,6 +22,9 @@ const router = createRouter({
       children: [
         // 本周页面完成后在这里传入 loader；统一名称、路径及登录保护。
         ...createTeamRoutes({
+          myTeams: () => import('@/views/team/MyTeamsView.vue'),
+          memberExits: () => import('@/views/team/MyMemberExitsView.vue'),
+          leaderTransfers: () => import('@/views/team/MyLeaderTransfersView.vue'),
           conversations: () => import('@/views/conversation/ConversationListView.vue'),
           conversation: () => import('@/views/conversation/ConversationView.vue'),
         }),

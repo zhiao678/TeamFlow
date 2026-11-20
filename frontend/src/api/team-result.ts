@@ -18,7 +18,8 @@ export async function unwrapTeamResult<T>(call: Promise<{ data: TeamResult<T> }>
   return data.data
 }
 export function teamErrorStatus(cause: unknown) {
-  if (cause instanceof TeamRequestError) return Math.floor(cause.code / 100)
+  if (cause instanceof Error && 'code' in cause && typeof cause.code === 'number')
+    return Math.floor(cause.code / 100)
   return axios.isAxiosError(cause) ? cause.response?.status : undefined
 }
 export function teamErrorMessage(cause: unknown) {
