@@ -25,6 +25,7 @@ const router = createRouter({
           myTeams: () => import('@/views/team/MyTeamsView.vue'),
           memberExits: () => import('@/views/team/MyMemberExitsView.vue'),
           leaderTransfers: () => import('@/views/team/MyLeaderTransfersView.vue'),
+          teamManagement: () => import('@/views/team/TeamManagementView.vue'),
           conversations: () => import('@/views/conversation/ConversationListView.vue'),
           conversation: () => import('@/views/conversation/ConversationView.vue'),
         }),

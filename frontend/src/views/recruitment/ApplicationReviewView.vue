@@ -149,6 +149,10 @@ async function run(app: Application, kind: 'accept' | 'reject') {
       <RouterLink :to="{ name: 'my-recruitments' }">← 返回我的招募</RouterLink>
       <template v-if="validId">
         ·
+        <RouterLink :to="{ name: 'team-management', params: { id } }">队伍管理</RouterLink>
+      </template>
+      <template v-if="validId">
+        ·
         <RouterLink :to="{ name: 'recruitment-detail', params: { id } }">查看招募详情</RouterLink>
       </template>
     </p>

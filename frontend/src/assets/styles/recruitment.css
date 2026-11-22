@@ -232,6 +232,9 @@
   flex-wrap: wrap;
   gap: 10px;
 }
+.recruit-member > button {
+  margin-left: auto;
+}
 .recruit-avatar {
   width: 32px;
   height: 32px;
@@ -287,6 +290,13 @@
 .recruit-app-empty {
   display: grid;
   gap: 6px;
+}
+.recruit-select {
+  display: grid;
+  gap: 5px;
+  max-width: 320px;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .recruit-applicant,
