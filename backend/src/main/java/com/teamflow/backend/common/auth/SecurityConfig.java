@@ -57,7 +57,6 @@ public class SecurityConfig {
                                 "/api/recruitments/*/applications",
                                 "/api/recruitments/*/team-conversation").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/recruitments/**", "/api/categories", "/api/tags").permitAll()
-                        .requestMatchers("/api/projects/**", "/api/tasks/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated());
         return http.build();

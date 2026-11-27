@@ -34,16 +34,17 @@ cd backend
 SOURCE C:/path/to/TeamFlow/database/recruitment-init.sql;
 ```
 
-脚本会创建并使用 `teamflow_recruitment` 数据库，包含用户、资料、分类、标签、招募、申请、成员、退出审核和后续数据基础共 19 张表及演示数据。完整字段、约束和事务设计见 ER 文档。
+脚本会创建并使用 `teamflow_recruitment` 数据库，包含用户、招募、项目、会话、通知和管理审核共 21 张表及演示数据。完整字段、约束和事务设计见 ER 文档。
 
 已有招募库本周使用增量升级脚本，在 MySQL 客户端先选择目标数据库再执行。
 
 ```sql
 USE teamflow_recruitment;
 SOURCE C:/path/to/TeamFlow/database/migrations/20261112-application-member-exit.sql;
+SOURCE C:/path/to/TeamFlow/database/migrations/20261127-project-foundation.sql;
 ```
 
-完整初始化脚本 `database/recruitment-init.sql` 会删除并重建数据库中的同名开发表，用于可重置开发库。上述增量脚本保留已有数据。原项目的 `database/init.sql` 使用 `teamflow` 数据库。
+完整初始化脚本 `database/recruitment-init.sql` 会删除并重建数据库中的同名开发表，用于可重置开发库。增量脚本保留已有数据。项目 foundation migration 创建 `project` 与 `project_member`，不会迁移或删除旧 `teamflow` 数据库。
 
 ## 启动新版招募平台后端
 
@@ -212,6 +213,6 @@ Java 基础包为 `com.teamflow.backend`：
 - 新版业务规则：[recruitment-decisions.md](../docs/recruitment-decisions.md)
 - 新版 ER 设计：[recruitment-er.md](../docs/recruitment-er.md)
 - [成队与队伍群交接说明](../docs/team-formation-handoff.md)
-- 旧项目/任务接口规范：[api-spec.md](../docs/api-spec.md)
+- [项目协作基础层交接契约](../docs/project-collaboration-handoff.md)
 
-旧项目、任务代码和 `database/init.sql` 暂时保留，避免破坏已有演示与测试。新版功能使用 `teamflow_recruitment` 数据库和 `recruitment` Spring Profile，后续按阶段逐步替换旧业务。
+`docs/api-spec.md` 是已移除的旧项目/任务演示接口历史文档，不代表当前可用接口。新项目使用 `teamflow_recruitment` 数据库；旧的独立 `teamflow` 初始化脚本与项目/任务演示代码已从后端移除，已有本机数据库不会被此代码变更删除或迁移。

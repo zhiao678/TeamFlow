@@ -14,6 +14,7 @@ import com.teamflow.backend.mapper.RecruitmentMapper;
 import com.teamflow.backend.mapper.TeamMemberMapper;
 import com.teamflow.backend.service.ApplicationService;
 import com.teamflow.backend.service.NotificationService;
+import com.teamflow.backend.service.ProjectService;
 import com.teamflow.backend.service.RecruitmentService;
 import com.teamflow.backend.vo.ApplicationVO;
 import com.teamflow.backend.vo.TeamMemberVO;
@@ -35,6 +36,7 @@ public class ApplicationServiceImpl implements ApplicationService {
     private final NotificationService notificationService;
     private final MemberExitRequestMapper memberExitRequestMapper;
     private final LeadershipExitMapper leadershipExitMapper;
+    private final ProjectService projectService;
 
     public ApplicationServiceImpl(
             ApplicationMapper applicationMapper,
@@ -43,7 +45,8 @@ public class ApplicationServiceImpl implements ApplicationService {
             RecruitmentService recruitmentService,
             NotificationService notificationService,
             MemberExitRequestMapper memberExitRequestMapper,
-            LeadershipExitMapper leadershipExitMapper
+            LeadershipExitMapper leadershipExitMapper,
+            ProjectService projectService
     ) {
         this.applicationMapper = applicationMapper;
         this.recruitmentMapper = recruitmentMapper;
@@ -52,6 +55,7 @@ public class ApplicationServiceImpl implements ApplicationService {
         this.notificationService = notificationService;
         this.memberExitRequestMapper = memberExitRequestMapper;
         this.leadershipExitMapper = leadershipExitMapper;
+        this.projectService = projectService;
     }
 
     @Override
@@ -198,6 +202,7 @@ public class ApplicationServiceImpl implements ApplicationService {
         }
         teamMemberMapper.removeMember(recruitmentId, userId);
         teamMemberMapper.removeConversationMember(recruitmentId, userId);
+        projectService.revokeMember(recruitmentId, userId, "REMOVED");
         memberExitRequestMapper.expirePendingForMember(recruitmentId, userId);
         leadershipExitMapper.expirePendingForMember(recruitmentId, userId);
     }

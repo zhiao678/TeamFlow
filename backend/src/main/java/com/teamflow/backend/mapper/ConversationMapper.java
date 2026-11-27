@@ -51,9 +51,25 @@ public interface ConversationMapper extends BaseMapper<Conversation> {
     Conversation selectDirect(@Param("lowUserId") Long lowUserId,
                               @Param("highUserId") Long highUserId);
 
-    @Select(VIEW_COLUMNS + " WHERE cm.conversation_id = #{conversationId} AND cm.user_id = #{userId} AND cm.status = 'ACTIVE'")
+    @Select(VIEW_COLUMNS + """
+            WHERE cm.conversation_id = #{conversationId}
+              AND cm.user_id = #{userId}
+              AND cm.status = 'ACTIVE'
+              AND (c.type <> 'TEAM' OR EXISTS (
+                  SELECT 1 FROM team_member tm
+                  WHERE tm.recruitment_id = c.recruitment_id
+                    AND tm.user_id = cm.user_id AND tm.status = 'ACTIVE'))
+            """)
     ConversationVO selectView(@Param("conversationId") Long conversationId, @Param("userId") Long userId);
 
-    @Select(VIEW_COLUMNS + " WHERE cm.user_id = #{userId} AND cm.status = 'ACTIVE' ORDER BY c.created_at DESC, c.id DESC")
+    @Select(VIEW_COLUMNS + """
+            WHERE cm.user_id = #{userId}
+              AND cm.status = 'ACTIVE'
+              AND (c.type <> 'TEAM' OR EXISTS (
+                  SELECT 1 FROM team_member tm
+                  WHERE tm.recruitment_id = c.recruitment_id
+                    AND tm.user_id = cm.user_id AND tm.status = 'ACTIVE'))
+            ORDER BY c.created_at DESC, c.id DESC
+            """)
     List<ConversationVO> selectForUser(@Param("userId") Long userId);
 }
