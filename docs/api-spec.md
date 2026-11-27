@@ -1,5 +1,7 @@
 # TeamFlow API 规范
 
+> 历史文档：本文描述旧项目/任务演示接口，不是当前后端契约。旧项目和任务演示 API 已移除；当前项目接口见 [project-collaboration-handoff.md](project-collaboration-handoff.md)。新任务模块尚未实现。
+
 本文档是 TeamFlow 前后端共同遵守的接口契约。接口字段、枚举或响应结构发生变化时，应在同一个提交中同步更新后端代码、前端类型和本文档。
 
 ## 1. 实现状态

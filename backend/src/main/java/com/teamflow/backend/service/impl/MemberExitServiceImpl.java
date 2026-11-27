@@ -11,6 +11,7 @@ import com.teamflow.backend.mapper.LeadershipExitMapper;
 import com.teamflow.backend.mapper.RecruitmentMapper;
 import com.teamflow.backend.service.MemberExitService;
 import com.teamflow.backend.service.NotificationService;
+import com.teamflow.backend.service.ProjectService;
 import com.teamflow.backend.vo.MemberExitRequestVO;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
@@ -25,15 +26,18 @@ public class MemberExitServiceImpl implements MemberExitService {
     private final RecruitmentMapper recruitmentMapper;
     private final LeadershipExitMapper leadershipExitMapper;
     private final NotificationService notificationService;
+    private final ProjectService projectService;
 
     public MemberExitServiceImpl(MemberExitRequestMapper exitRequestMapper,
                                  RecruitmentMapper recruitmentMapper,
                                  LeadershipExitMapper leadershipExitMapper,
-                                 NotificationService notificationService) {
+                                 NotificationService notificationService,
+                                 ProjectService projectService) {
         this.exitRequestMapper = exitRequestMapper;
         this.recruitmentMapper = recruitmentMapper;
         this.leadershipExitMapper = leadershipExitMapper;
         this.notificationService = notificationService;
+        this.projectService = projectService;
     }
 
     @Override
@@ -97,6 +101,7 @@ public class MemberExitServiceImpl implements MemberExitService {
             throw new BusinessException(ErrorCode.CONFLICT, "member state changed");
         }
         exitRequestMapper.revokeConversationAccess(request.getRecruitmentId(), request.getUserId(), now);
+        projectService.revokeMember(request.getRecruitmentId(), request.getUserId(), "LEFT");
         leadershipExitMapper.expirePendingForMember(request.getRecruitmentId(), request.getUserId());
         exitRequestMapper.process(id, "APPROVED", null, now);
         notify(request.getUserId(), ownerId, request, "APPROVED",

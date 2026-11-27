@@ -5,11 +5,15 @@ import java.time.LocalDateTime;
 public class ProjectDetailVO {
 
     private Long id;
+    private Long recruitmentId;
+    private String recruitmentTitle;
     private String name;
     private String description;
     private Long ownerId;
     private String ownerDisplayName;
     private String status;
+    private Long memberCount;
+    private String currentUserRole;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -23,6 +27,22 @@ public class ProjectDetailVO {
 
     public String getName() {
         return name;
+    }
+
+    public Long getRecruitmentId() {
+        return recruitmentId;
+    }
+
+    public void setRecruitmentId(Long recruitmentId) {
+        this.recruitmentId = recruitmentId;
+    }
+
+    public String getRecruitmentTitle() {
+        return recruitmentTitle;
+    }
+
+    public void setRecruitmentTitle(String recruitmentTitle) {
+        this.recruitmentTitle = recruitmentTitle;
     }
 
     public void setName(String name) {
@@ -55,6 +75,22 @@ public class ProjectDetailVO {
 
     public String getStatus() {
         return status;
+    }
+
+    public Long getMemberCount() {
+        return memberCount;
+    }
+
+    public void setMemberCount(Long memberCount) {
+        this.memberCount = memberCount;
+    }
+
+    public String getCurrentUserRole() {
+        return currentUserRole;
+    }
+
+    public void setCurrentUserRole(String currentUserRole) {
+        this.currentUserRole = currentUserRole;
     }
 
     public void setStatus(String status) {

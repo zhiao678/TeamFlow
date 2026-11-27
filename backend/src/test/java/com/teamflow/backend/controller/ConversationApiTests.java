@@ -189,6 +189,42 @@ class ConversationApiTests {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.content").value("team hello"))
                 .andExpect(jsonPath("$.data.sourceRecruitmentId").value(recruitmentId));
+        String teamMessageResponse = mockMvc.perform(get("/api/conversations/" + conversationId + "/messages")
+                        .header("Authorization", bearer(member.token())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.records", hasSize(1)))
+                .andExpect(jsonPath("$.data.records[0].content").value("team hello"))
+                .andExpect(jsonPath("$.data.unreadCount").value(1))
+                .andReturn().getResponse().getContentAsString();
+        long teamMessageId = read(teamMessageResponse).path("data").path("records").get(0).path("id").asLong();
+        mockMvc.perform(patch("/api/conversations/" + conversationId + "/read")
+                        .header("Authorization", bearer(member.token()))
+                        .contentType("application/json")
+                        .content("{\"lastReadMessageId\":" + teamMessageId + "}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.unreadCount").value(0));
+
+        jdbcTemplate.update("""
+                UPDATE team_member SET status = 'REMOVED', left_at = CURRENT_TIMESTAMP
+                WHERE recruitment_id = ? AND user_id = ?
+                """, recruitmentId, member.id());
+        mockMvc.perform(get("/api/conversations")
+                        .header("Authorization", bearer(member.token())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data", hasSize(0)));
+        mockMvc.perform(get("/api/conversations/" + conversationId + "/messages")
+                        .header("Authorization", bearer(member.token())))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/conversations/" + conversationId + "/messages")
+                        .header("Authorization", bearer(member.token()))
+                        .contentType("application/json")
+                        .content("{\"clientMessageId\":\"team-2\",\"content\":\"should fail\"}"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(patch("/api/conversations/" + conversationId + "/read")
+                        .header("Authorization", bearer(member.token()))
+                        .contentType("application/json")
+                        .content("{\"lastReadMessageId\":" + teamMessageId + "}"))
+                .andExpect(status().isForbidden());
     }
 
     private Account register(String username, String displayName) throws Exception {

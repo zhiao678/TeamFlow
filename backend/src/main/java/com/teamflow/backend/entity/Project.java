@@ -16,6 +16,8 @@ public class Project {
     @TableId(type = IdType.AUTO)
     private Long id;
 
+    private Long recruitmentId;
+
     private String name;
 
     private String description;

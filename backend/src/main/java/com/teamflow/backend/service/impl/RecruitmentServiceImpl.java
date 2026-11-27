@@ -25,6 +25,7 @@ import com.teamflow.backend.mapper.RecruitmentTagMapper;
 import com.teamflow.backend.mapper.TagMapper;
 import com.teamflow.backend.mapper.TeamMemberMapper;
 import com.teamflow.backend.service.NotificationService;
+import com.teamflow.backend.service.ProjectService;
 import com.teamflow.backend.service.RecruitmentService;
 import com.teamflow.backend.vo.CategoryVO;
 import com.teamflow.backend.vo.ConversationVO;
@@ -51,6 +52,7 @@ public class RecruitmentServiceImpl implements RecruitmentService {
     private final NotificationService notificationService;
     private final ConversationMapper conversationMapper;
     private final ConversationMemberMapper conversationMemberMapper;
+    private final ProjectService projectService;
 
     public RecruitmentServiceImpl(
             RecruitmentMapper recruitmentMapper,
@@ -62,7 +64,8 @@ public class RecruitmentServiceImpl implements RecruitmentService {
             ApplicationMapper applicationMapper,
             NotificationService notificationService,
             ConversationMapper conversationMapper,
-            ConversationMemberMapper conversationMemberMapper
+            ConversationMemberMapper conversationMemberMapper,
+            ProjectService projectService
     ) {
         this.recruitmentMapper = recruitmentMapper;
         this.recruitmentTagMapper = recruitmentTagMapper;
@@ -74,6 +77,7 @@ public class RecruitmentServiceImpl implements RecruitmentService {
         this.notificationService = notificationService;
         this.conversationMapper = conversationMapper;
         this.conversationMemberMapper = conversationMemberMapper;
+        this.projectService = projectService;
     }
 
     @Override
@@ -258,6 +262,8 @@ public class RecruitmentServiceImpl implements RecruitmentService {
         recruitmentMapper.updateById(recruitment);
         expirePendingApplications(recruitment,
                 "招募「" + recruitment.getTitle() + "」已成队，你的待处理申请已失效");
+
+        projectService.createForFormedRecruitment(recruitment, members);
 
         Conversation conversation = new Conversation();
         conversation.setType("TEAM");

@@ -22,5 +22,9 @@ public class ProjectMember {
 
     private String projectRole;
 
+    private String status;
+
     private LocalDateTime joinedAt;
+
+    private LocalDateTime leftAt;
 }

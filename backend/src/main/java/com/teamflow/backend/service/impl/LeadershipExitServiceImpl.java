@@ -11,6 +11,7 @@ import com.teamflow.backend.mapper.MemberExitRequestMapper;
 import com.teamflow.backend.mapper.RecruitmentMapper;
 import com.teamflow.backend.service.LeadershipExitService;
 import com.teamflow.backend.service.NotificationService;
+import com.teamflow.backend.service.ProjectService;
 import com.teamflow.backend.vo.LeaderTransferVO;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
@@ -25,15 +26,18 @@ public class LeadershipExitServiceImpl implements LeadershipExitService {
     private final MemberExitRequestMapper memberExitRequestMapper;
     private final RecruitmentMapper recruitmentMapper;
     private final NotificationService notificationService;
+    private final ProjectService projectService;
 
     public LeadershipExitServiceImpl(LeadershipExitMapper leadershipExitMapper,
                                      MemberExitRequestMapper memberExitRequestMapper,
                                      RecruitmentMapper recruitmentMapper,
-                                     NotificationService notificationService) {
+                                     NotificationService notificationService,
+                                     ProjectService projectService) {
         this.leadershipExitMapper = leadershipExitMapper;
         this.memberExitRequestMapper = memberExitRequestMapper;
         this.recruitmentMapper = recruitmentMapper;
         this.notificationService = notificationService;
+        this.projectService = projectService;
     }
 
     @Override
@@ -100,11 +104,13 @@ public class LeadershipExitServiceImpl implements LeadershipExitService {
                 || leadershipExitMapper.changeOwner(recruitmentId, transfer.getFromUserId(), successorId, now) != 1) {
             throw new BusinessException(ErrorCode.CONFLICT, "leader or member state changed");
         }
+        projectService.transferLeader(recruitmentId, transfer.getFromUserId(), successorId);
         if (Boolean.TRUE.equals(transfer.getExitAfterTransfer())) {
             if (memberExitRequestMapper.leaveMember(recruitmentId, transfer.getFromUserId(), now) != 1) {
                 throw new BusinessException(ErrorCode.CONFLICT, "outgoing leader state changed");
             }
             memberExitRequestMapper.revokeConversationAccess(recruitmentId, transfer.getFromUserId(), now);
+            projectService.revokeMember(recruitmentId, transfer.getFromUserId(), "LEFT");
             memberExitRequestMapper.expirePendingForMember(recruitmentId, transfer.getFromUserId());
         }
         leadershipExitMapper.process(id, "ACCEPTED", now);

@@ -93,6 +93,33 @@ CREATE TABLE team_member (
     UNIQUE (recruitment_id, user_id)
 );
 
+CREATE TABLE project (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    recruitment_id BIGINT NOT NULL UNIQUE,
+    owner_id BIGINT NOT NULL,
+    name VARCHAR(150) NOT NULL,
+    description VARCHAR(50000),
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'ARCHIVED')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (recruitment_id) REFERENCES recruitment(id),
+    FOREIGN KEY (owner_id) REFERENCES `user`(id)
+);
+
+CREATE TABLE project_member (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    project_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    project_role VARCHAR(20) NOT NULL CHECK (project_role IN ('ADMIN', 'MEMBER')),
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'LEFT', 'REMOVED')),
+    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    left_at TIMESTAMP,
+    UNIQUE (project_id, user_id),
+    FOREIGN KEY (project_id) REFERENCES project(id),
+    FOREIGN KEY (user_id) REFERENCES `user`(id),
+    CHECK ((status = 'ACTIVE' AND left_at IS NULL) OR (status <> 'ACTIVE' AND left_at IS NOT NULL))
+);
+
 CREATE TABLE recruitment_favorite (
     user_id BIGINT NOT NULL,
     recruitment_id BIGINT NOT NULL,

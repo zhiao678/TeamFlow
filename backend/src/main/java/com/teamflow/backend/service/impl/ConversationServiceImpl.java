@@ -9,6 +9,7 @@ import com.teamflow.backend.entity.Conversation;
 import com.teamflow.backend.entity.ConversationMember;
 import com.teamflow.backend.entity.Message;
 import com.teamflow.backend.entity.Recruitment;
+import com.teamflow.backend.entity.TeamMember;
 import com.teamflow.backend.entity.User;
 import com.teamflow.backend.mapper.ConversationMapper;
 import com.teamflow.backend.mapper.ConversationMemberMapper;
@@ -16,6 +17,7 @@ import com.teamflow.backend.mapper.MessageMapper;
 import com.teamflow.backend.mapper.UserBlockMapper;
 import com.teamflow.backend.mapper.UserMapper;
 import com.teamflow.backend.mapper.RecruitmentMapper;
+import com.teamflow.backend.mapper.TeamMemberMapper;
 import com.teamflow.backend.service.ConversationService;
 import com.teamflow.backend.vo.ConversationReadVO;
 import com.teamflow.backend.vo.ConversationVO;
@@ -36,19 +38,22 @@ public class ConversationServiceImpl implements ConversationService {
     private final UserBlockMapper userBlockMapper;
     private final UserMapper userMapper;
     private final RecruitmentMapper recruitmentMapper;
+    private final TeamMemberMapper teamMemberMapper;
 
     public ConversationServiceImpl(ConversationMapper conversationMapper,
                                    ConversationMemberMapper conversationMemberMapper,
                                    MessageMapper messageMapper,
                                    UserBlockMapper userBlockMapper,
                                    UserMapper userMapper,
-                                   RecruitmentMapper recruitmentMapper) {
+                                   RecruitmentMapper recruitmentMapper,
+                                   TeamMemberMapper teamMemberMapper) {
         this.conversationMapper = conversationMapper;
         this.conversationMemberMapper = conversationMemberMapper;
         this.messageMapper = messageMapper;
         this.userBlockMapper = userBlockMapper;
         this.userMapper = userMapper;
         this.recruitmentMapper = recruitmentMapper;
+        this.teamMemberMapper = teamMemberMapper;
     }
 
     @Override
@@ -108,8 +113,8 @@ public class ConversationServiceImpl implements ConversationService {
     public MessagePageVO listMessages(Long conversationId, int page, int pageSize, Long afterMessageId) {
         validatePagination(page, pageSize);
         Long userId = CurrentUserContext.require();
-        requireConversation(conversationId);
-        requireActiveMember(conversationId, userId, false);
+        Conversation conversation = requireConversation(conversationId);
+        requireActiveMember(conversation, userId, false);
         if (afterMessageId != null && messageMapper.countInConversation(conversationId, afterMessageId) == 0) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "afterMessageId does not belong to this conversation");
         }
@@ -128,7 +133,7 @@ public class ConversationServiceImpl implements ConversationService {
     public MessageVO sendMessage(Long conversationId, SendMessageRequest request) {
         Long userId = CurrentUserContext.require();
         Conversation conversation = requireConversationForUpdate(conversationId, request.sourceRecruitmentId());
-        ConversationMember member = requireActiveMember(conversationId, userId, true);
+        ConversationMember member = requireActiveMember(conversation, userId, true);
         if (!"ACTIVE".equals(conversation.getStatus())) {
             throw new BusinessException(ErrorCode.CONFLICT, "conversation is read-only");
         }
@@ -176,8 +181,8 @@ public class ConversationServiceImpl implements ConversationService {
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public ConversationReadVO markRead(Long conversationId, MarkConversationReadRequest request) {
         Long userId = CurrentUserContext.require();
-        requireConversationForUpdate(conversationId);
-        ConversationMember member = requireActiveMember(conversationId, userId, true);
+        Conversation conversation = requireConversationForUpdate(conversationId);
+        ConversationMember member = requireActiveMember(conversation, userId, true);
         Long messageId = request.resolvedMessageId();
         if (messageId == null) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "lastReadMessageId is required");
@@ -225,12 +230,20 @@ public class ConversationServiceImpl implements ConversationService {
         return conversation;
     }
 
-    private ConversationMember requireActiveMember(Long conversationId, Long userId, boolean forUpdate) {
+    private ConversationMember requireActiveMember(Conversation conversation, Long userId, boolean forUpdate) {
+        Long conversationId = conversation.getId();
         ConversationMember member = forUpdate
                 ? conversationMemberMapper.selectForUpdate(conversationId, userId)
                 : conversationMemberMapper.select(conversationId, userId);
         if (member == null || !"ACTIVE".equals(member.getStatus())) {
             throw new BusinessException(ErrorCode.FORBIDDEN, "only active conversation members can access messages");
+        }
+        if ("TEAM".equals(conversation.getType())) {
+            TeamMember teamMember = teamMemberMapper.selectByRecruitmentAndUser(
+                    conversation.getRecruitmentId(), userId);
+            if (teamMember == null || !"ACTIVE".equals(teamMember.getStatus())) {
+                throw new BusinessException(ErrorCode.FORBIDDEN, "only active team members can access team messages");
+            }
         }
         return member;
     }
