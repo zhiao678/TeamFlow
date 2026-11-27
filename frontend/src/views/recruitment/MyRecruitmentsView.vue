@@ -201,6 +201,12 @@ async function removeDraft(row: Recruitment) {
             <RouterLink
               v-if="row.status !== 'DRAFT'"
               class="recruit-button"
+              :to="{ name: 'team-management', params: { id: row.id } }"
+              >队伍管理</RouterLink
+            >
+            <RouterLink
+              v-if="row.status !== 'DRAFT'"
+              class="recruit-button"
               :to="{ name: 'application-review', params: { id: row.id } }"
               >管理申请</RouterLink
             >

@@ -2,12 +2,14 @@
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationsStore } from '@/stores/notifications'
+import { useConversationsStore } from '@/stores/conversations'
 defineProps<{ collapsed: boolean }>()
 defineEmits<{ toggle: [] }>()
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const notifications = useNotificationsStore()
+const conversations = useConversationsStore()
 async function logout() {
   if (await auth.logout()) await router.replace('/login')
 }
@@ -27,6 +29,27 @@ async function logout() {
       >
     </div>
     <div class="header-end">
+      <RouterLink
+        to="/conversations"
+        class="message-link"
+        :title="conversations.error || '查看聊天会话'"
+        >聊天<span
+          v-if="auth.token"
+          class="unread-dot"
+          :aria-label="
+            conversations.unreadCount === null
+              ? '聊天未读数待获取'
+              : `${conversations.unreadCount} 条聊天未读`
+          "
+          >{{
+            conversations.unreadCount === null
+              ? '—'
+              : conversations.unreadCount > 99
+                ? '99+'
+                : conversations.unreadCount
+          }}</span
+        ></RouterLink
+      >
       <RouterLink
         to="/notifications"
         class="message-link"

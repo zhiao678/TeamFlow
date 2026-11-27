@@ -118,7 +118,7 @@ CREATE TABLE notification (
     read_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CHECK (CHAR_LENGTH(TRIM(event_key)) > 0),
-    CHECK (event_type IN ('APPLICATION_SUBMITTED', 'APPLICATION_ACCEPTED', 'APPLICATION_REJECTED', 'APPLICATION_WITHDRAWN', 'APPLICATION_EXPIRED', 'RECRUITMENT_TEAMED', 'RECRUITMENT_CLOSED', 'MEMBER_JOINED', 'MEMBER_LEFT', 'MEMBER_REMOVED', 'LEADER_TRANSFER_REQUESTED', 'LEADER_TRANSFER_ACCEPTED', 'LEADER_TRANSFER_REJECTED', 'LEADER_TRANSFER_CANCELLED', 'LEADER_TRANSFER_EXPIRED', 'REPORT_RESOLVED', 'REPORT_DISMISSED')),
+    CHECK (event_type IN ('APPLICATION_SUBMITTED', 'APPLICATION_ACCEPTED', 'APPLICATION_REJECTED', 'APPLICATION_WITHDRAWN', 'APPLICATION_EXPIRED', 'RECRUITMENT_TEAMED', 'RECRUITMENT_CLOSED', 'MEMBER_JOINED', 'MEMBER_LEFT', 'MEMBER_REMOVED', 'MEMBER_EXIT_REQUESTED', 'MEMBER_EXIT_APPROVED', 'MEMBER_EXIT_REJECTED', 'LEADER_TRANSFER_REQUESTED', 'LEADER_TRANSFER_ACCEPTED', 'LEADER_TRANSFER_REJECTED', 'LEADER_TRANSFER_CANCELLED', 'LEADER_TRANSFER_EXPIRED', 'REPORT_RESOLVED', 'REPORT_DISMISSED')),
     CHECK (target_type IN ('RECRUITMENT', 'APPLICATION', 'LEADER_TRANSFER', 'REPORT')),
     CHECK (
         (target_type = 'RECRUITMENT' AND recruitment_id IS NOT NULL AND application_id IS NULL AND leader_transfer_id IS NULL AND report_id IS NULL) OR
@@ -197,4 +197,41 @@ CREATE TABLE user_block (
     CHECK (blocker_id <> blocked_id),
     FOREIGN KEY (blocker_id) REFERENCES `user` (id),
     FOREIGN KEY (blocked_id) REFERENCES `user` (id)
+);
+
+
+CREATE TABLE member_exit_request (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    recruitment_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    reason VARCHAR(255),
+    rejection_reason VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    processed_at TIMESTAMP,
+    pending_user_id BIGINT GENERATED ALWAYS AS (CASE WHEN status = 'PENDING' THEN user_id ELSE NULL END),
+    UNIQUE (recruitment_id, pending_user_id),
+    CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED', 'EXPIRED')),
+    CHECK ((status = 'PENDING' AND processed_at IS NULL) OR (status <> 'PENDING' AND processed_at IS NOT NULL)),
+    FOREIGN KEY (recruitment_id, user_id) REFERENCES team_member (recruitment_id, user_id)
+);
+
+CREATE TABLE leader_transfer (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    recruitment_id BIGINT NOT NULL,
+    from_user_id BIGINT NOT NULL,
+    to_user_id BIGINT NOT NULL,
+    exit_after_transfer TINYINT NOT NULL DEFAULT 0,
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    processed_at TIMESTAMP,
+    pending_recruitment_id BIGINT GENERATED ALWAYS AS (CASE WHEN status = 'PENDING' THEN recruitment_id ELSE NULL END),
+    UNIQUE (pending_recruitment_id),
+    CHECK (from_user_id <> to_user_id),
+    CHECK (exit_after_transfer IN (0, 1)),
+    CHECK (status IN ('PENDING', 'ACCEPTED', 'REJECTED', 'CANCELLED', 'EXPIRED')),
+    CHECK ((status = 'PENDING' AND processed_at IS NULL) OR (status <> 'PENDING' AND processed_at IS NOT NULL)),
+    FOREIGN KEY (recruitment_id) REFERENCES recruitment (id),
+    FOREIGN KEY (recruitment_id, from_user_id) REFERENCES team_member (recruitment_id, user_id),
+    FOREIGN KEY (recruitment_id, to_user_id) REFERENCES team_member (recruitment_id, user_id)
 );

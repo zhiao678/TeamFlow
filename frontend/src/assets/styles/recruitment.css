@@ -232,6 +232,9 @@
   flex-wrap: wrap;
   gap: 10px;
 }
+.recruit-member > button {
+  margin-left: auto;
+}
 .recruit-avatar {
   width: 32px;
   height: 32px;
@@ -288,6 +291,13 @@
   display: grid;
   gap: 6px;
 }
+.recruit-select {
+  display: grid;
+  gap: 5px;
+  max-width: 320px;
+  font-size: 14px;
+  font-weight: 600;
+}
 
 .recruit-applicant,
 .recruit-application-form,
@@ -312,4 +322,22 @@
 }
 .recruit select[multiple] {
   min-height: 112px;
+}
+
+.team-connections {
+  display: grid;
+  gap: 12px;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 18px;
+}
+.team-confirm {
+  padding: 16px;
+  background: #f4f7fc;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+}
+#member-exit {
+  scroll-margin-top: 90px;
 }

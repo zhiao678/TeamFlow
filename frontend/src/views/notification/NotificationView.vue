@@ -24,6 +24,14 @@ const labels: Record<string, string> = {
   APPLICATION_ACCEPTED: '申请通过',
   APPLICATION_REJECTED: '申请未通过',
   APPLICATION_EXPIRED: '申请失效',
+  RECRUITMENT_TEAMED: '队伍已成队',
+  MEMBER_EXIT_REQUESTED: '收到退出申请',
+  MEMBER_EXIT_APPROVED: '退出申请已批准',
+  MEMBER_EXIT_REJECTED: '退出申请被拒绝',
+  LEADER_TRANSFER_REQUESTED: '收到负责人转交',
+  LEADER_TRANSFER_ACCEPTED: '负责人转交已接受',
+  LEADER_TRANSFER_REJECTED: '负责人转交被拒绝',
+  LEADER_TRANSFER_EXPIRED: '负责人转交已失效',
 }
 async function reload() {
   const path = route.fullPath

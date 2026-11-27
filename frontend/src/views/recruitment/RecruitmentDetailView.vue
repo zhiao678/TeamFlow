@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import FavoriteButton from '@/components/recruitment/FavoriteButton.vue'
 import RecruitmentApplicant from '@/components/recruitment/RecruitmentApplicant.vue'
@@ -8,10 +8,14 @@ import { useFavoritesStore } from '@/stores/favorites'
 import { useApplicationsStore } from '@/stores/applications'
 import { getRecruitment } from '@/api/recruitment-query'
 import { useRecruitmentRead, useBrowseClock } from '@/composables/useRecruitmentRead'
+import MemberExitPanel from '@/components/team/MemberExitPanel.vue'
+import RecruitmentConnections from '@/components/team/RecruitmentConnections.vue'
+import { useTeamSyncStore } from '@/stores/team-sync'
 import { useAuthStore } from '@/stores/auth'
 import { displayStatus, displayDate } from '@/types/recruitment'
 const route = useRoute()
 const auth = useAuthStore()
+const sync = useTeamSyncStore()
 const favorites = useFavoritesStore(),
   applications = useApplicationsStore()
 const members = ref<InstanceType<typeof RecruitmentMembers> | null>(null)
@@ -32,12 +36,18 @@ const {
     return row
   },
 )
+watch(() => sync.revisions[Number(id.value)], retry)
+function refreshTeam() {
+  if (!valid.value) return
+  if (!auth.token || !sync.invalidateTeam(Number(id.value), sync.sessionRevision)) retry()
+}
 const now = useBrowseClock()
 const owned = computed(() => !!item.value && auth.user?.id === item.value.ownerId)
 </script>
 <template>
   <main class="recruit">
     <RouterLink :to="{ name: 'recruitment-hall', query: route.query }">← 返回招募大厅</RouterLink>
+    <button v-if="valid" :disabled="loading" @click="refreshTeam">刷新详情与成员</button>
     <p v-if="applications.busy" role="status">正在处理申请，请稍候…</p>
     <p v-if="auth.token && applications.notice" role="status">{{ applications.notice }}</p>
     <p v-if="auth.token && applications.actionError" class="form-error" role="alert">
@@ -99,6 +109,7 @@ const owned = computed(() => !!item.value && auth.user?.id === item.value.ownerI
         当前为{{ displayStatus(item, now) }}，不能提交申请。
       </p>
       <FavoriteButton :item="item" />
+      <RecruitmentConnections :item="item" />
       <RecruitmentMembers ref="members" :recruitment-id="item.id" />
       <RecruitmentApplicant
         :item="item"
@@ -107,5 +118,12 @@ const owned = computed(() => !!item.value && auth.user?.id === item.value.ownerI
         @refresh="retry"
       />
     </article>
+    <MemberExitPanel
+      v-if="valid && auth.token"
+      :recruitment-id="Number(id)"
+      :owner-id="item?.ownerId"
+      :members="members?.members ?? []"
+      :ready="!!item && !loading && !error && !!members && !members.loading && !members.error"
+    />
   </main>
 </template>
