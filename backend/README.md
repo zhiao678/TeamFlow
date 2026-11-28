@@ -34,7 +34,7 @@ cd backend
 SOURCE C:/path/to/TeamFlow/database/recruitment-init.sql;
 ```
 
-脚本会创建并使用 `teamflow_recruitment` 数据库，包含用户、招募、项目、会话、通知和管理审核共 21 张表及演示数据。完整字段、约束和事务设计见 ER 文档。
+脚本会创建并使用 `teamflow_recruitment` 数据库，包含用户、招募、项目、任务、会话、通知和管理审核共 22 张表及演示数据。完整字段、约束和事务设计见 ER 文档。
 
 已有招募库本周使用增量升级脚本，在 MySQL 客户端先选择目标数据库再执行。
 
@@ -42,6 +42,7 @@ SOURCE C:/path/to/TeamFlow/database/recruitment-init.sql;
 USE teamflow_recruitment;
 SOURCE C:/path/to/TeamFlow/database/migrations/20261112-application-member-exit.sql;
 SOURCE C:/path/to/TeamFlow/database/migrations/20261127-project-foundation.sql;
+SOURCE C:/path/to/TeamFlow/database/migrations/20261128-project-task.sql;
 ```
 
 完整初始化脚本 `database/recruitment-init.sql` 会删除并重建数据库中的同名开发表，用于可重置开发库。增量脚本保留已有数据。项目 foundation migration 创建 `project` 与 `project_member`，不会迁移或删除旧 `teamflow` 数据库。
@@ -169,6 +170,12 @@ Authorization: Bearer <token>
 
 2026-11-20 本地完整验证共 64 项测试通过，实际提交版本原有 46 项测试及打包通过，真实 MySQL 成队并发、群消息和成员变更验证通过。前端待接入的成队操作、群入口、聊天及通知展示详见交接说明。
 
+## 项目与任务
+
+成队自动创建项目。登录后通过 `GET /api/projects`、`GET /api/projects/{id}` 与 `GET /api/projects/{id}/members` 查询可访问项目。项目与队伍两处成员资格都须有效。
+
+项目 ADMIN 可创建、编辑、删除和分配任务，普通成员可查看任务及修改本人负责的任务状态。列表支持分页、筛选和各状态统计。已有项目库使用 11 月 28 日任务增量脚本。[接口契约与前端联调](../docs/project-tasks-handoff.md)
+
 ## 统一响应
 
 成功响应：
@@ -213,6 +220,6 @@ Java 基础包为 `com.teamflow.backend`：
 - 新版业务规则：[recruitment-decisions.md](../docs/recruitment-decisions.md)
 - 新版 ER 设计：[recruitment-er.md](../docs/recruitment-er.md)
 - [成队与队伍群交接说明](../docs/team-formation-handoff.md)
-- [项目协作基础层交接契约](../docs/project-collaboration-handoff.md)
+- [项目任务接口与交接](../docs/project-tasks-handoff.md)
 
 `docs/api-spec.md` 是已移除的旧项目/任务演示接口历史文档，不代表当前可用接口。新项目使用 `teamflow_recruitment` 数据库；旧的独立 `teamflow` 初始化脚本与项目/任务演示代码已从后端移除，已有本机数据库不会被此代码变更删除或迁移。

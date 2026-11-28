@@ -12,6 +12,15 @@ import java.util.List;
 public interface ProjectMemberMapper extends BaseMapper<ProjectMember> {
 
     @Select("""
+            SELECT pm.* FROM project_member pm
+            JOIN project p ON p.id = pm.project_id
+            JOIN team_member tm ON tm.recruitment_id = p.recruitment_id
+                AND tm.user_id = pm.user_id AND tm.status = 'ACTIVE'
+            WHERE pm.project_id = #{projectId} AND pm.user_id = #{userId} AND pm.status = 'ACTIVE'
+            """)
+    ProjectMember selectActiveMember(@Param("projectId") Long projectId, @Param("userId") Long userId);
+
+    @Select("""
             SELECT pm.user_id AS id, u.display_name, u.avatar_url,
                    pm.project_role, tm.role AS team_role, pm.joined_at
             FROM project_member pm
