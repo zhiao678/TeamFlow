@@ -11,6 +11,9 @@ import java.util.List;
 
 public interface ProjectMapper extends BaseMapper<Project> {
 
+    @Select("SELECT recruitment_id FROM project WHERE id = #{id}")
+    Long selectRecruitmentId(@Param("id") Long id);
+
     @Select("""
             SELECT p.id,
                    p.recruitment_id,
@@ -20,8 +23,8 @@ public interface ProjectMapper extends BaseMapper<Project> {
                    r.owner_id,
                    u.display_name AS owner_display_name,
                    p.status,
-                   (SELECT COUNT(*) FROM team_member member
-                    WHERE member.recruitment_id = p.recruitment_id AND member.status = 'ACTIVE') AS member_count,
+                   (SELECT COUNT(*) FROM team_member active_member
+                    WHERE active_member.recruitment_id = p.recruitment_id AND active_member.status = 'ACTIVE') AS member_count,
                    pm.project_role AS current_user_role,
                    p.created_at,
                    p.updated_at
@@ -45,8 +48,8 @@ public interface ProjectMapper extends BaseMapper<Project> {
                    r.owner_id,
                    u.display_name AS owner_display_name,
                    p.status,
-                   (SELECT COUNT(*) FROM team_member member
-                    WHERE member.recruitment_id = p.recruitment_id AND member.status = 'ACTIVE') AS member_count,
+                   (SELECT COUNT(*) FROM team_member active_member
+                    WHERE active_member.recruitment_id = p.recruitment_id AND active_member.status = 'ACTIVE') AS member_count,
                    p.created_at,
                    p.updated_at
             FROM `project` p

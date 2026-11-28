@@ -1,6 +1,6 @@
 # 招募平台 ER 设计
 
-本文与 `database/recruitment-init.sql` 对齐，共 19 张表。申请、成员管理、收藏、退出审核、负责人退出继任、确认成队、队伍群查询、通知及基础会话消息能力已接入。举报治理按后续阶段推进，屏蔽关系用于私聊权限校验。SQL 要求 MySQL 8.0.16 及以上版本，并会重建 `teamflow_recruitment` 中的表。已有库使用 `database/migrations/20261112-application-member-exit.sql` 增量升级。
+本文与 `database/recruitment-init.sql` 对齐，共 22 张表。成队后自动建立项目，项目任务关系见第 9 节。MySQL 8.0.16 及以上版本支持表结构中的 CHECK 约束。初始化用于可重置的开发库，已有库按后端 README 中的顺序增量升级。
 
 ## 1. 完整实体关系
 
@@ -499,3 +499,19 @@ TEAM 消息发送先按 ID 升序锁定所属及来源招募，再锁会话和�
 通知枚举补充 MEMBER_EXIT_REQUESTED、MEMBER_EXIT_APPROVED、MEMBER_EXIT_REJECTED。四类入队申请通知目标固定 APPLICATION，退出审核目标 RECRUITMENT，继任通知目标 LEADER_TRANSFER。
 
 已有数据库使用 `database/migrations/20261112-application-member-exit.sql`，先选择目标数据库再执行。脚本可重复执行，保留已有业务数据。初始化脚本用于新建开发库。按申请、退出申请或转交 ID 路由的写事务采用 READ_COMMITTED，先锁招募再读最新成员和待处理记录，防止等待锁后使用旧快照判断人数或负责人。
+
+## 9. 项目与任务
+
+```mermaid
+erDiagram
+    RECRUITMENT ||--o| PROJECT : forms
+    PROJECT ||--o{ PROJECT_MEMBER : has
+    USER ||--o{ PROJECT_MEMBER : joins
+    PROJECT ||--o{ PROJECT_TASK : contains
+    PROJECT_MEMBER ||--o{ PROJECT_TASK : creates
+    PROJECT_MEMBER o|--o{ PROJECT_TASK : assigned
+```
+
+project.recruitment_id 唯一，project_member 的 project_id 与 user_id 组合唯一。project_task 包含项目 ID、创建者、可空负责人、标题、描述、状态、优先级、截止时间、完成时间和创建更新时间。创建者和负责人使用项目与用户组合外键引用 project_member，保留历史记录。
+
+任务状态初始为 TODO，优先级默认 MEDIUM。CHECK 限定状态、优先级与完成时间的一致性。服务层检查队伍与项目成员双 ACTIVE，写事务锁定招募后重新读取角色和指派对象。任务按项目创建时间分页，索引覆盖状态、负责人、优先级和截止时间筛选。项目任务迁移为 `database/migrations/20261128-project-task.sql`。[任务接口与迁移说明](project-tasks-handoff.md)
