@@ -19,6 +19,7 @@ async function logout() {
     <div class="header-start">
       <button
         class="icon-button"
+        aria-controls="main-sidebar"
         :aria-expanded="!collapsed"
         aria-label="切换侧栏"
         @click="$emit('toggle')"
@@ -71,9 +72,12 @@ async function logout() {
           }}</span
         ></RouterLink
       ><template v-if="auth.user"
-        ><RouterLink to="/profile" class="message-link"
+        ><RouterLink
+          to="/profile"
+          class="message-link header-account"
+          :aria-label="auth.user.displayName + '的个人资料'"
           ><span class="avatar">{{ auth.user.displayName.slice(0, 1) || '用户' }}</span
-          >{{ auth.user.displayName }}</RouterLink
+          ><span class="header-display-name">{{ auth.user.displayName }}</span></RouterLink
         ><el-button text :loading="auth.loggingOut" @click="logout">退出登录</el-button></template
       ><template v-else-if="auth.token"
         ><span class="message-link">{{ auth.loading ? '正在验证身份…' : '身份待验证' }}</span

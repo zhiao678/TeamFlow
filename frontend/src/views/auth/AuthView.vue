@@ -3,6 +3,7 @@ import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { login, register, errorMessage } from '@/api/users'
 import { useAuthStore } from '@/stores/auth'
+import { homeRoute } from '@/router/home'
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
@@ -44,7 +45,7 @@ async function submit() {
       !redirect.startsWith('//') &&
       !redirect.includes('\\') &&
       !/^\/(login|register)([/?#]|$)/.test(redirect)
-    await router.replace(safe ? redirect : '/dashboard')
+    await router.replace(safe ? redirect : homeRoute)
   } catch (cause) {
     error.value = errorMessage(cause)
   } finally {
@@ -110,7 +111,7 @@ async function submit() {
             query: { redirect: route.query.redirect },
           }"
           >{{ registering ? '已有账号，去登录' : '没有账号，去注册' }}</RouterLink
-        ><RouterLink to="/projects">浏览项目</RouterLink>
+        ><RouterLink :to="homeRoute">浏览招募大厅</RouterLink>
       </div>
     </section>
   </main>

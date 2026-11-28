@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { homeRoute } from './home'
 import { createTeamRoutes } from './team-routes'
 
 const router = createRouter({
@@ -18,9 +19,8 @@ const router = createRouter({
     {
       path: '/',
       component: () => import('@/layouts/MainLayout.vue'),
-      redirect: '/dashboard',
+      redirect: homeRoute,
       children: [
-        // 本周页面完成后在这里传入 loader；统一名称、路径及登录保护。
         ...createTeamRoutes({
           myTeams: () => import('@/views/team/MyTeamsView.vue'),
           memberExits: () => import('@/views/team/MyMemberExitsView.vue'),
@@ -31,7 +31,7 @@ const router = createRouter({
         }),
         {
           path: 'recruitments',
-          name: 'recruitment-hall',
+          name: homeRoute.name,
           component: () => import('@/views/recruitment/RecruitmentHallView.vue'),
           meta: { title: '招募大厅' },
         },
@@ -78,19 +78,15 @@ const router = createRouter({
           meta: { title: '申请管理', requiresAuth: true },
         },
         {
-          path: 'dashboard',
-          component: () => import('@/views/dashboard/DashboardView.vue'),
-          meta: { title: '工作台', requiresAuth: true },
-        },
-        {
           path: 'projects',
+          name: 'projects',
           component: () => import('@/views/project/ProjectListView.vue'),
-          meta: { title: '项目', projectData: true },
+          meta: { title: '项目', requiresAuth: true },
         },
         {
           path: 'projects/:projectId',
           component: () => import('@/views/project/ProjectDetailView.vue'),
-          meta: { title: '项目详情', projectData: true },
+          meta: { title: '项目详情', requiresAuth: true },
           children: [
             { path: '', redirect: (to) => ({ name: 'project-overview', params: to.params }) },
             {
@@ -108,15 +104,10 @@ const router = createRouter({
             {
               path: 'tasks',
               name: 'project-tasks',
-              component: () => import('@/views/task/ProjectTasksView.vue'),
+              component: () => import('@/views/project/ProjectTasksEntryView.vue'),
               meta: { title: '项目任务' },
             },
           ],
-        },
-        {
-          path: 'tasks',
-          component: () => import('@/views/task/MyTasksView.vue'),
-          meta: { title: '我的任务', requiresAuth: true },
         },
         {
           path: 'profile',
